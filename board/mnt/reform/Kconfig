@@ -1,0 +1,12 @@
+if TARGET_MNTREFORM
+
+config SYS_BOARD
+	default "reform"
+
+config SYS_VENDOR
+	default "mnt"
+
+config SYS_CONFIG_NAME
+	default "mntreform"
+
+endif
