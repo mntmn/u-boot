@@ -205,6 +205,10 @@ config TARGET_MCCMON6
 	select MX6QDL
 	select SUPPORT_SPL
 
+config TARGET_MNTREFORM
+	bool "MNT Reform"
+	select MX6Q
+
 config TARGET_MX6CUBOXI
 	bool "Solid-run mx6 boards"
 	select BOARD_LATE_INIT
@@ -556,6 +560,7 @@ source "board/samtec/vining_2000/Kconfig"
 source "board/liebherr/display5/Kconfig"
 source "board/liebherr/mccmon6/Kconfig"
 source "board/logicpd/imx6/Kconfig"
+source "board/mnt/reform/Kconfig"
 source "board/seco/Kconfig"
 source "board/sks-kinkel/sksimx6/Kconfig"
 source "board/solidrun/mx6cuboxi/Kconfig"
