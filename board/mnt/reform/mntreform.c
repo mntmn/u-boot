@@ -598,7 +598,6 @@ int board_init(void)
 	imx_iomux_v3_setup_multiple_pads(
 		usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info0);
-	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
 	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
 	setup_sata();
 
