@@ -104,17 +104,16 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"usb_pgood_delay=2000\0" \
 	"console=ttymxc0\0" \
+  "loadaddr=0x10008000\0" \
   "fdt_addr=0x18000000\0" \
+	"fdt_high=0xffffffff\0" \
 	"fdt_file=imx6qp-mntreform.dtb\0" \
-  "preboot=setenv stdout serial,vga"\
-    "echo Hello from preboot.\0"\
-  "bootargs=console=ttymxc0,115200 noinitrd root=/dev/mmcblk0p2 rootwait rw\0"\
-  "boota=fatload mmc 0:1 ${loadaddr} zImage; fatload mmc 0:1 ${fdt_addr} ${fdt_file}; fdt addr ${fdt_addr}; fdt resize\0"\
-  "bootb=bootz ${loadaddr} - ${fdt_addr}\0"\
+  "preboot=setenv stdout serial,vga;usb start;\0" \
+  "bootargs=noinitrd root=/dev/mmcblk0p1 rootwait rw pci=nomsi cma=256M video=HDMI-A-1:1280x720-24\0" \
+  "linux=ext4load mmc 0:1 ${loadaddr} zImage; ext4load mmc 0:1 ${fdt_addr} ${fdt_file}; fdt addr ${fdt_addr}; fdt resize; bootz ${loadaddr} - ${fdt_addr}\0" \
 	"bootcmd=" \
-    "echo Hello."\
-    "\0"                                            \
-	"initrd_high=0xffffffff\0"
+    "echo; echo Welcome to Reform. Type  run linux  to start Debian/GNU Linux or  help  for other commands." \
+    "\0" 
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_MEMTEST_START       0x10000000
