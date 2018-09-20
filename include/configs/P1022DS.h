@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * Authors: Srikanth Srinivasan <srikanth.srinivasan@freescale.com>
  *          Timur Tabi <timur@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -82,7 +81,6 @@
 #endif
 
 /* High Level Configuration Options */
-#define CONFIG_MP			/* support multiple processors */
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
 #define CONFIG_RESET_VECTOR_ADDRESS	0xeffffffc
@@ -264,8 +262,6 @@
 
 #endif /* CONFIG_NAND_FSL_ELBC */
 
-#define CONFIG_BOARD_EARLY_INIT_R
-#define CONFIG_MISC_INIT_R
 #define CONFIG_HWCONFIG
 
 #define CONFIG_FSL_NGPIXIS
@@ -309,7 +305,6 @@
 #define CONFIG_SYS_INIT_L2_END	(CONFIG_SYS_INIT_L2_ADDR + CONFIG_SYS_L2_SIZE)
 #define CONFIG_SPL_RELOC_TEXT_BASE	0xf8f81000
 #define CONFIG_SPL_RELOC_STACK		(CONFIG_SYS_INIT_L2_ADDR + 116 * 1024)
-#define CONFIG_SPL_RELOC_STACK_SIZE	(32 << 10)
 #define CONFIG_SPL_RELOC_MALLOC_ADDR	(CONFIG_SYS_INIT_L2_ADDR + 148 * 1024)
 #define CONFIG_SPL_RELOC_MALLOC_SIZE	(108 << 10)
 #define CONFIG_SPL_GD_ADDR		(CONFIG_SYS_INIT_L2_ADDR + 112 * 1024)
@@ -338,7 +333,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -364,9 +358,6 @@
  * disable empty flash sector detection, which is I/O-intensive.
  */
 #undef CONFIG_SYS_FLASH_EMPTY_INFO
-#endif
-
-#ifndef CONFIG_FSL_DIU_FB
 #endif
 
 #ifdef CONFIG_ATI
@@ -489,16 +480,13 @@
 #endif
 
 #ifdef CONFIG_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
 #endif
 
-#define CONFIG_TSEC_ENET
 #ifdef CONFIG_TSEC_ENET
 
 #define CONFIG_TSECV2
 
-#define CONFIG_MII			/* MII PHY management */
 #define CONFIG_TSEC1		1
 #define CONFIG_TSEC1_NAME	"eTSEC1"
 #define CONFIG_TSEC2		1
@@ -519,8 +507,6 @@
 /*
  * Dynamic MTD Partition support with mtdparts
  */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #define CONFIG_FLASH_CFI_MTD
 
 /*
@@ -573,9 +559,6 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
-#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
-#define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*
@@ -594,7 +577,7 @@
  * Environment Configuration
  */
 
-#define CONFIG_HOSTNAME		p1022ds
+#define CONFIG_HOSTNAME		"p1022ds"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	u-boot.bin	/* U-Boot image on TFTP server */

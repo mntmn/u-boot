@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2008,2010 Freescale Semiconductor, Inc
  * Andy Fleming
  *
  * Based (loosely) on the Linux code
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MMC_H_
@@ -65,6 +64,7 @@
 #define MMC_MODE_HS_52MHz	MMC_CAP(MMC_HS_52)
 #define MMC_MODE_DDR_52MHz	MMC_CAP(MMC_DDR_52)
 #define MMC_MODE_HS200		MMC_CAP(MMC_HS_200)
+#define MMC_MODE_HS400		MMC_CAP(MMC_HS_400)
 
 #define MMC_MODE_8BIT		BIT(30)
 #define MMC_MODE_4BIT		BIT(29)
@@ -249,6 +249,10 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 						/* SDR mode @1.2V I/O */
 #define EXT_CSD_CARD_TYPE_HS200		(EXT_CSD_CARD_TYPE_HS200_1_8V | \
 					 EXT_CSD_CARD_TYPE_HS200_1_2V)
+#define EXT_CSD_CARD_TYPE_HS400_1_8V	BIT(6)
+#define EXT_CSD_CARD_TYPE_HS400_1_2V	BIT(7)
+#define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V | \
+					 EXT_CSD_CARD_TYPE_HS400_1_2V)
 
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
@@ -260,6 +264,7 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_TIMING_LEGACY	0	/* no high speed */
 #define EXT_CSD_TIMING_HS	1	/* HS */
 #define EXT_CSD_TIMING_HS200	2	/* HS200 */
+#define EXT_CSD_TIMING_HS400	3	/* HS400 */
 
 #define EXT_CSD_BOOT_ACK_ENABLE			(1 << 6)
 #define EXT_CSD_BOOT_PARTITION_ENABLE		(1 << 3)
@@ -520,6 +525,7 @@ enum bus_mode {
 	UHS_DDR50,
 	UHS_SDR104,
 	MMC_HS_200,
+	MMC_HS_400,
 	MMC_MODES_END
 };
 
@@ -532,6 +538,10 @@ static inline bool mmc_is_mode_ddr(enum bus_mode mode)
 		return true;
 #if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT)
 	else if (mode == UHS_DDR50)
+		return true;
+#endif
+#if CONFIG_IS_ENABLED(MMC_HS400_SUPPORT)
+	else if (mode == MMC_HS_400)
 		return true;
 #endif
 	else
@@ -708,6 +718,9 @@ int mmc_voltage_to_mv(enum mmc_voltage voltage);
  */
 int mmc_set_clock(struct mmc *mmc, uint clock, bool disable);
 
+#define MMC_CLK_ENABLE		false
+#define MMC_CLK_DISABLE		true
+
 struct mmc *find_mmc_device(int dev_num);
 int mmc_set_dev(int dev_num);
 void print_mmc_devices(char separator);
@@ -752,12 +765,22 @@ int mmc_set_bkops_enable(struct mmc *mmc);
 
 /**
  * Start device initialization and return immediately; it does not block on
+ * polling OCR (operation condition register) status. Useful for checking
+ * the presence of SD/eMMC when no card detect logic is available.
+ *
+ * @param mmc	Pointer to a MMC device struct
+ * @return 0 on success, <0 on error.
+ */
+int mmc_get_op_cond(struct mmc *mmc);
+
+/**
+ * Start device initialization and return immediately; it does not block on
  * polling OCR (operation condition register) status.  Then you should call
  * mmc_init, which would block on polling OCR status and complete the device
  * initializatin.
  *
  * @param mmc	Pointer to a MMC device struct
- * @return 0 on success, IN_PROGRESS on waiting for OCR status, <0 on error.
+ * @return 0 on success, <0 on error.
  */
 int mmc_start_init(struct mmc *mmc);
 

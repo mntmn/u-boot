@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006-2008
  * Texas Instruments.
@@ -6,14 +7,11 @@
  * Nishanth Menon <nm@ti.com>
  *
  * Configuration settings for the TI OMAP3430 Zoom MDK board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_NR_DRAM_BANKS	2	/* CS1 may or may not be populated */
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <asm/arch/omap.h>
 #include <configs/ti_omap3_common.h>
@@ -22,8 +20,6 @@
 
 /* Generic NAND definition conflicts with debug_base */
 #undef CONFIG_SYS_NAND_BASE
-
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_REVISION_TAG		1
 
@@ -52,13 +48,10 @@
 /*
  * TWL4030
  */
-#define CONFIG_TWL4030_LED		1
 
 /*
  * Board NAND Info.
  */
-#define CONFIG_SYS_NAND_ADDR		NAND_BASE	/* physical address */
-							/* to access nand */
 #define CONFIG_SYS_NAND_BASE		NAND_BASE	/* physical address */
 							/* to access nand at */
 							/* CS0 */

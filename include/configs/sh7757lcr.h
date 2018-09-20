@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the sh7757lcr board
  *
  * Copyright (C) 2011 Renesas Solutions Corp.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SH7757LCR_H
@@ -21,7 +20,6 @@
 #define SH7757LCR_SDRAM_ECC_SETTING	0x0f000000	/* 240MByte */
 #define SH7757LCR_SDRAM_DVC_SIZE	(16 * 1024 * 1024)
 
-#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PBSIZE		256
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }
 
@@ -31,7 +29,6 @@
 #define CONFIG_SYS_MEMTEST_START	(SH7757LCR_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + \
 					 224 * 1024 * 1024)
-#undef	CONFIG_SYS_ALT_MEMTEST
 #undef	CONFIG_SYS_MEMTEST_SCRATCH
 #undef	CONFIG_SYS_LOADS_BAUD_CHANGE
 
@@ -66,7 +63,6 @@
 #define CONFIG_SH_SPI_BASE		0xfe002000
 
 /* MMCIF */
-#define CONFIG_SH_MMCIF			1
 #define CONFIG_SH_MMCIF_ADDR		0xffcb0000
 #define CONFIG_SH_MMCIF_CLK		48000000
 
@@ -91,7 +87,5 @@
 
 /* Board Clock */
 #define CONFIG_SYS_CLK_FREQ	48000000
-#define CONFIG_SH_TMU_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
-#define CONFIG_SYS_TMU_CLK_DIV	4
 #endif	/* __SH7757LCR_H */

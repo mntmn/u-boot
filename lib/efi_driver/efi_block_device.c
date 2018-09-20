@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  EFI block driver
  *
  *  Copyright (c) 2017 Heinrich Schuchardt
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  *
  * The EFI uclass creates a handle for this driver and installs the
  * driver binding protocol on it.
@@ -162,6 +161,8 @@ static int efi_bl_bind(efi_handle_t handle, void *interface)
 		return ret;
 	if (!bdev)
 		return -ENOENT;
+	/* Set the DM_FLAG_NAME_ALLOCED flag to avoid a memory leak */
+	device_set_name_alloced(bdev);
 	/* Allocate priv */
 	ret = device_probe(bdev);
 	if (ret)

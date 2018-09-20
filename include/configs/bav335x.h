@@ -56,8 +56,6 @@
 #define NANDARGS ""
 #endif
 
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 DEFAULT_LINUX_BOOT_ENV \
@@ -339,7 +337,6 @@ DEFAULT_LINUX_BOOT_ENV \
 /* SPL */
 #ifndef CONFIG_NOR_BOOT
 /* Bootcount using the RTC block */
-#define CONFIG_BOOTCOUNT_AM33XX
 #define CONFIG_SYS_BOOTCOUNT_BE
 
 /* USB gadget RNDIS */
@@ -396,7 +393,7 @@ DEFAULT_LINUX_BOOT_ENV \
 #define CONFIG_AM335X_USB1
 #define CONFIG_AM335X_USB1_MODE MUSB_HOST
 
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_USBETH_SUPPORT)
+#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_USB_ETHER)
 /* disable host part of MUSB in SPL */
 /* disable EFI partitions and partition UUID support */
 #endif
@@ -453,7 +450,6 @@ DEFAULT_LINUX_BOOT_ENV \
  */
 #if defined(CONFIG_SPI_BOOT)
 /* SPL related */
-#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x20000
 
 #define CONFIG_SYS_REDUNDAND_ENVIRONMENT

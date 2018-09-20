@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Aeronix Zipit Z2 configuration file
  *
  * Copyright (C) 2009-2010 Marek Vasut <marek.vasut@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -43,7 +42,6 @@
  * STUART - the lower serial port on Colibri board
  */
 #define	CONFIG_STUART			1
-#define CONFIG_CONS_INDEX		2
 
 /*
  * Bootloader Components Configuration
@@ -77,8 +75,6 @@ unsigned char zipitz2_spi_read(void);
 #endif
 #endif
 
-#define	CONFIG_SYS_LONGHELP				/* undef to save memory	*/
-
 #define	CONFIG_SYS_DEVICE_NULLDEV	1
 
 /*
@@ -95,7 +91,6 @@ unsigned char zipitz2_spi_read(void);
 /*
  * DRAM Map
  */
-#define	CONFIG_NR_DRAM_BANKS		1		/* We have 1 bank of DRAM */
 #define	PHYS_SDRAM_1			0xa0000000	/* SDRAM Bank #1 */
 #define	PHYS_SDRAM_1_SIZE		0x02000000	/* 32 MB */
 

@@ -1,15 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2017 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <fdtdec.h>
 #include <fdt_support.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <dm/of_access.h>
 #include <dm/of_addr.h>
 #include <dm/ofnode.h>
@@ -52,6 +51,38 @@ int ofnode_read_s32_default(ofnode node, const char *propname, s32 def)
 {
 	assert(ofnode_valid(node));
 	ofnode_read_u32(node, propname, (u32 *)&def);
+
+	return def;
+}
+
+int ofnode_read_u64(ofnode node, const char *propname, u64 *outp)
+{
+	const fdt64_t *cell;
+	int len;
+
+	assert(ofnode_valid(node));
+	debug("%s: %s: ", __func__, propname);
+
+	if (ofnode_is_np(node))
+		return of_read_u64(ofnode_to_np(node), propname, outp);
+
+	cell = fdt_getprop(gd->fdt_blob, ofnode_to_offset(node), propname,
+			   &len);
+	if (!cell || len < sizeof(*cell)) {
+		debug("(not found)\n");
+		return -EINVAL;
+	}
+	*outp = fdt64_to_cpu(cell[0]);
+	debug("%#llx (%lld)\n", (unsigned long long)*outp,
+	      (unsigned long long)*outp);
+
+	return 0;
+}
+
+int ofnode_read_u64_default(ofnode node, const char *propname, u64 def)
+{
+	assert(ofnode_valid(node));
+	ofnode_read_u64(node, propname, &def);
 
 	return def;
 }
@@ -165,6 +196,20 @@ ofnode ofnode_next_subnode(ofnode node)
 		fdt_next_subnode(gd->fdt_blob, ofnode_to_offset(node)));
 }
 
+ofnode ofnode_get_parent(ofnode node)
+{
+	ofnode parent;
+
+	assert(ofnode_valid(node));
+	if (ofnode_is_np(node))
+		parent = np_to_ofnode(of_get_parent(ofnode_to_np(node)));
+	else
+		parent.of_offset = fdt_parent_offset(gd->fdt_blob,
+						     ofnode_to_offset(node));
+
+	return parent;
+}
+
 const char *ofnode_get_name(ofnode node)
 {
 	assert(ofnode_valid(node));
@@ -172,6 +217,19 @@ const char *ofnode_get_name(ofnode node)
 		return strrchr(node.np->full_name, '/') + 1;
 
 	return fdt_get_name(gd->fdt_blob, ofnode_to_offset(node), NULL);
+}
+
+ofnode ofnode_get_by_phandle(uint phandle)
+{
+	ofnode node;
+
+	if (of_live_active())
+		node = np_to_ofnode(of_find_node_by_phandle(phandle));
+	else
+		node.of_offset = fdt_node_offset_by_phandle(gd->fdt_blob,
+							    phandle);
+
+	return node;
 }
 
 int ofnode_read_size(ofnode node, const char *propname)
@@ -200,13 +258,16 @@ fdt_addr_t ofnode_get_addr_index(ofnode node, int index)
 		uint flags;
 		u64 size;
 		int na;
+		int ns;
 
 		prop_val = of_get_address(ofnode_to_np(node), index, &size,
 					  &flags);
 		if (!prop_val)
 			return FDT_ADDR_T_NONE;
 
-		if (IS_ENABLED(CONFIG_OF_TRANSLATE)) {
+		ns = of_n_size_cells(ofnode_to_np(node));
+
+		if (IS_ENABLED(CONFIG_OF_TRANSLATE) && ns > 0) {
 			return of_translate_address(ofnode_to_np(node), prop_val);
 		} else {
 			na = of_n_addr_cells(ofnode_to_np(node));
@@ -562,6 +623,42 @@ fail:
 	return ret;
 }
 
+int ofnode_read_pci_vendev(ofnode node, u16 *vendor, u16 *device)
+{
+	const char *list, *end;
+	int len;
+
+	list = ofnode_get_property(node, "compatible", &len);
+	if (!list)
+		return -ENOENT;
+
+	end = list + len;
+	while (list < end) {
+		len = strlen(list);
+		if (len >= strlen("pciVVVV,DDDD")) {
+			char *s = strstr(list, "pci");
+
+			/*
+			 * check if the string is something like pciVVVV,DDDD.RR
+			 * or just pciVVVV,DDDD
+			 */
+			if (s && s[7] == ',' &&
+			    (s[12] == '.' || s[12] == 0)) {
+				s += 3;
+				*vendor = simple_strtol(s, NULL, 16);
+
+				s += 5;
+				*device = simple_strtol(s, NULL, 16);
+
+				return 0;
+			}
+		}
+		list += (len + 1);
+	}
+
+	return -ENOENT;
+}
+
 int ofnode_read_addr_cells(ofnode node)
 {
 	if (ofnode_is_np(node))
@@ -656,4 +753,41 @@ u64 ofnode_translate_address(ofnode node, const fdt32_t *in_addr)
 		return of_translate_address(ofnode_to_np(node), in_addr);
 	else
 		return fdt_translate_address(gd->fdt_blob, ofnode_to_offset(node), in_addr);
+}
+
+int ofnode_device_is_compatible(ofnode node, const char *compat)
+{
+	if (ofnode_is_np(node))
+		return of_device_is_compatible(ofnode_to_np(node), compat,
+					       NULL, NULL);
+	else
+		return !fdt_node_check_compatible(gd->fdt_blob,
+						  ofnode_to_offset(node),
+						  compat);
+}
+
+ofnode ofnode_by_compatible(ofnode from, const char *compat)
+{
+	if (of_live_active()) {
+		return np_to_ofnode(of_find_compatible_node(
+			(struct device_node *)ofnode_to_np(from), NULL,
+			compat));
+	} else {
+		return offset_to_ofnode(fdt_node_offset_by_compatible(
+				gd->fdt_blob, ofnode_to_offset(from), compat));
+	}
+}
+
+ofnode ofnode_by_prop_value(ofnode from, const char *propname,
+			    const void *propval, int proplen)
+{
+	if (of_live_active()) {
+		return np_to_ofnode(of_find_node_by_prop_value(
+			(struct device_node *)ofnode_to_np(from), propname,
+			propval, proplen));
+	} else {
+		return offset_to_ofnode(fdt_node_offset_by_prop_value(
+				gd->fdt_blob, ofnode_to_offset(from),
+				propname, propval, proplen));
+	}
 }

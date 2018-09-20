@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
  *
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -549,8 +548,10 @@ const struct boot_mode soc_boot_modes[] = {
 
 void reset_misc(void)
 {
+#ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_VIDEO_MXS
 	lcdif_power_down();
+#endif
 #endif
 }
 
@@ -650,6 +651,11 @@ void imx_setup_hdmi(void)
 }
 #endif
 
+
+/*
+ * gpr_init() function is common for boards using MX6S, MX6DL, MX6D,
+ * MX6Q and MX6QP processors
+ */
 void gpr_init(void)
 {
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;

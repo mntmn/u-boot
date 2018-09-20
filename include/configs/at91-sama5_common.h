@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Common part of configuration settings for the AT91 SAMA5 board.
  *
  * Copyright (C) 2015 Atmel Corporation
  *		      Josh Wu <josh.wu@atmel.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AT91_SAMA5_COMMON_H
@@ -20,8 +19,6 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
 
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
-
 /* general purpose I/O */
 #ifndef CONFIG_DM_GPIO
 #define CONFIG_AT91_GPIO
@@ -32,9 +29,6 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -63,7 +57,7 @@
 
 #ifdef CONFIG_NAND_BOOT
 /* u-boot env in nand flash */
-#define CONFIG_ENV_OFFSET		0xc0000
+#define CONFIG_ENV_OFFSET		0x140000
 #define CONFIG_ENV_OFFSET_REDUND	0x100000
 #define CONFIG_ENV_SIZE			0x20000
 #define CONFIG_BOOTCOMMAND		"nand read 0x21000000 0x180000 0x80000;"	\
@@ -81,10 +75,6 @@
 #endif
 
 #endif
-
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_AUTO_COMPLETE
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(4 * 1024 * 1024)

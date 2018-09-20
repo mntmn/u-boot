@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Samsung Electronics
  * Sanghee Kim <sh0130.kim@samsung.com>
  * Piotr Wilczek <p.wilczek@samsung.com>
  *
  * Configuation settings for the SAMSUNG TRATS2 (EXYNOS4412) board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_TRATS2_H
@@ -22,7 +21,6 @@
 #endif
 
 /* TRATS2 has 4 banks of DRAM */
-#define CONFIG_NR_DRAM_BANKS		4
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 #define PHYS_SDRAM_1			CONFIG_SYS_SDRAM_BASE
 #define SDRAM_BANK_SIZE			(256 << 20)	/* 256 MB */
@@ -32,7 +30,6 @@
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x3E00000)
 
 /* select serial console configuration */
-#define CONFIG_SERIAL2
 
 /* Console configuration */
 
@@ -51,9 +48,6 @@
 #define CONFIG_ENV_OFFSET		((32 - 4) << 10) /* 32KiB - 4KiB */
 
 #define CONFIG_ENV_OVERWRITE
-
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 /* Tizen - partitions definitions */
 #define PARTS_CSA		"csa-mmc"
@@ -154,8 +148,6 @@
 
 /* Common misc for Samsung */
 #define CONFIG_MISC_COMMON
-
-#define CONFIG_MISC_INIT_R
 
 /* Download menu - Samsung common */
 #define CONFIG_LCD_MENU

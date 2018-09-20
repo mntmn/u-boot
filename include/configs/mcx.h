@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Ilya Yanok, Emcraft Systems
  *
  * Based on omap3_evm_config.h
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -26,8 +25,6 @@
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
-
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_CMDLINE_TAG			/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS
@@ -60,9 +57,7 @@
 /*
  * select serial console configuration
  */
-#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
-#define CONFIG_SERIAL3			3	/* UART3 */
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -74,9 +69,6 @@
 
 /* commands to include */
 
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
-
 #define CONFIG_SYS_I2C
 
 /* RTC */
@@ -86,8 +78,6 @@
 /*
  * Board NAND Info.
  */
-#define CONFIG_SYS_NAND_ADDR		NAND_BASE	/* physical address */
-							/* to access nand */
 #define CONFIG_SYS_NAND_BASE		NAND_BASE	/* physical address */
 							/* to access */
 							/* nand at CS0 */
@@ -107,7 +97,7 @@
 
 /* Setup MTD for NAND on the SOM */
 
-#define CONFIG_HOSTNAME mcx
+#define CONFIG_HOSTNAME "mcx"
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"adddbg=setenv bootargs ${bootargs} trace_buf_size=64M\0"	\
 	"adddebug=setenv bootargs ${bootargs} earlyprintk=serial\0"	\
@@ -126,13 +116,13 @@
 	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"		\
 	"baudrate=115200\0"						\
 	"consoledev=ttyO2\0"						\
-	"hostname=" __stringify(CONFIG_HOSTNAME) "\0"			\
+	"hostname=" CONFIG_HOSTNAME "\0"			\
 	"loadaddr=0x82000000\0"						\
 	"load=tftp ${loadaddr} ${u-boot}\0"				\
 	"load_k=tftp ${loadaddr} ${bootfile}\0"				\
 	"loaduimage=fatload mmc 0 ${loadaddr} uImage\0"			\
 	"loadmlo=tftp ${loadaddr} ${mlo}\0"				\
-	"mlo=" __stringify(CONFIG_HOSTNAME) "/MLO\0"			\
+	"mlo=" CONFIG_HOSTNAME "/MLO\0"			\
 	"mmcargs=root=/dev/mmcblk0p2 rw "				\
 		"rootfstype=ext3 rootwait\0"				\
 	"mmcboot=echo Booting from mmc ...; "				\
@@ -146,7 +136,7 @@
 		"bootm ${loadaddr}\0"					\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
-	"u-boot=" __stringify(CONFIG_HOSTNAME) "/u-boot.img\0"		\
+	"u-boot=" CONFIG_HOSTNAME "/u-boot.img\0"		\
 	"uboot_addr=0x80000\0"						\
 	"update=nandecc sw;nand erase ${uboot_addr} 100000;"		\
 		"nand write ${loadaddr} ${uboot_addr} 80000\0"		\
@@ -192,13 +182,9 @@
 	"bootcmd=mmc rescan;if fatload mmc 0 82000000 loadbootscr.scr;"	\
 		"then source 82000000;else run nandboot;fi\0"
 
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_CMDLINE_EDITING
-
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_CBSIZE		1024/* Console I/O Buffer Size */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
@@ -222,7 +208,6 @@
 /*
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS	2	/* CS1 may or may not be populated */
 #define PHYS_SDRAM_1		OMAP34XX_SDRC_CS0
 #define PHYS_SDRAM_2		OMAP34XX_SDRC_CS1
 
@@ -298,10 +283,7 @@
  *
  */
 #if defined(CONFIG_CMD_NET)
-#define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_DRIVER_TI_EMAC_USE_RMII
-#define CONFIG_MII
-#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT 10
@@ -309,6 +291,5 @@
 
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_VIDEO_OMAP3
 
 #endif /* __CONFIG_H */

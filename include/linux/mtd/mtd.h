@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright © 1999-2010 David Woodhouse <dwmw2@infradead.org> et al.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -76,10 +75,6 @@ struct mtd_erase_region_info {
  *		mode = MTD_OPS_PLACE_OOB or MTD_OPS_RAW)
  * @datbuf:	data buffer - if NULL only oob data are read/written
  * @oobbuf:	oob data buffer
- *
- * Note, it is allowed to read more than one OOB area at one go, but not write.
- * The interface assumes that the OOB write requests program only one page's
- * OOB area.
  */
 struct mtd_oob_ops {
 	unsigned int	mode;

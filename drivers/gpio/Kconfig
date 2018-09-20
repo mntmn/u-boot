@@ -58,6 +58,11 @@ config ATMEL_PIO4
 	  may be dedicated as a general purpose I/O or be assigned to
 	  a function of an embedded peripheral.
 
+config DA8XX_GPIO
+	bool "DA8xx GPIO Driver"
+	help
+	  This driver supports the DA8xx GPIO controller
+
 config INTEL_BROADWELL_GPIO
 	bool "Intel Broadwell GPIO driver"
 	depends on DM
@@ -109,7 +114,7 @@ config MSM_GPIO
 	  - MSM8916
 
 config MXC_GPIO
-	bool "Freescale/NXP MXC UART driver"
+	bool "Freescale/NXP MXC GPIO driver"
 	help
 	  Support GPIO controllers on various i.MX platforms
 
@@ -183,6 +188,12 @@ config SANDBOX_GPIO_COUNT
 	  of 'anonymous' GPIOs that do not belong to any device or bank.
 	  Select a suitable value depending on your needs.
 
+config XILINX_GPIO
+	bool "Xilinx GPIO driver"
+	depends on DM_GPIO
+	help
+	  This config enable the Xilinx GPIO driver for Microblaze.
+
 config CMD_TCA642X
 	bool "tca642x - Command to access tca642x state"
 	help
@@ -229,7 +240,7 @@ config PIC32_GPIO
 
 config STM32F7_GPIO
 	bool "ST STM32 GPIO driver"
-	depends on DM_GPIO && STM32
+	depends on DM_GPIO && (STM32 || ARCH_STM32MP)
 	default y
 	help
 	  Device model driver support for STM32 GPIO controller. It should be

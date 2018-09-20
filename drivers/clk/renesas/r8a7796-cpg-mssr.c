@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Renesas R8A7796 CPG MSSR driver
  *
@@ -7,8 +8,6 @@
  * r8a7796 Clock Pulse Generator / Module Standby and Software Reset
  *
  * Copyright (C) 2016 Glider bvba
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -323,10 +322,29 @@ static const struct cpg_mssr_info r8a7796_cpg_mssr_info = {
 	.get_pll_config		= r8a7796_get_pll_config,
 };
 
+static const struct cpg_mssr_info r8a77965_cpg_mssr_info = {
+	.core_clk		= r8a7796_core_clks,
+	.core_clk_size		= ARRAY_SIZE(r8a7796_core_clks),
+	.mod_clk		= r8a7796_mod_clks,
+	.mod_clk_size		= ARRAY_SIZE(r8a7796_mod_clks),
+	.mstp_table		= r8a7796_mstp_table,
+	.mstp_table_size	= ARRAY_SIZE(r8a7796_mstp_table),
+	.reset_node		= "renesas,r8a77965-rst",
+	.extalr_node		= "extalr",
+	.mod_clk_base		= MOD_CLK_BASE,
+	.clk_extal_id		= CLK_EXTAL,
+	.clk_extalr_id		= CLK_EXTALR,
+	.get_pll_config		= r8a7796_get_pll_config,
+};
+
 static const struct udevice_id r8a7796_clk_ids[] = {
 	{
 		.compatible	= "renesas,r8a7796-cpg-mssr",
 		.data		= (ulong)&r8a7796_cpg_mssr_info,
+	},
+	{
+		.compatible	= "renesas,r8a77965-cpg-mssr",
+		.data		= (ulong)&r8a77965_cpg_mssr_info,
 	},
 	{ }
 };

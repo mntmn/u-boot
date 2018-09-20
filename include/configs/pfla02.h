@@ -1,17 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Stefano Babic <sbabic@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
 #ifndef __PCM058_CONFIG_H
 #define __PCM058_CONFIG_H
 
-#include <config_distro_defaults.h>
-
 #ifdef CONFIG_SPL
-#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	(64 * 1024)
 #include "imx6_spl.h"
 #endif
@@ -27,14 +23,12 @@
 #define CONSOLE_DEV		"ttymxc3"
 
 /* Early setup */
-#define CONFIG_DISPLAY_BOARDINFO_LATE
 
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(8 * SZ_1M)
 
 /* Ethernet */
-#define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE		RGMII
 #define CONFIG_ETHPRIME			"FEC"
@@ -65,13 +59,10 @@
 /* DMA stuff, needed for GPMI/MXS NAND support */
 
 /* Filesystem support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 /* Various command support */
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM

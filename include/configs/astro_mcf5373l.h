@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuration settings for the Sentec Cobra Board.
  *
  * (C) Copyright 2003 Josef Baumgartner <josef.baumgartner@telex.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -52,8 +51,6 @@
 #else
 #define ENABLE_JFFS	1
 #endif
-
-#define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_MCFRTC
 #undef RTC_DEBUG
@@ -126,7 +123,6 @@
 #endif
 
 /* here we put our FPGA configuration... */
-#define CONFIG_MISC_INIT_R	1
 
 /* Define user parameters that have to be customized most likely */
 
@@ -172,10 +168,7 @@
 /* default RAM address for user programs */
 #define CONFIG_SYS_LOAD_ADDR	0x20000
 
-#define CONFIG_SYS_LONGHELP
-
 #define CONFIG_FPGA_COUNT	1
-#define	CONFIG_FPGA_SPARTAN3
 #define CONFIG_SYS_FPGA_PROG_FEEDBACK
 #define CONFIG_SYS_FPGA_WAIT		1000
 

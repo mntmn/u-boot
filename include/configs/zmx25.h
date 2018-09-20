@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (c) 2011 Graf-Syteco, Matthias Weisser
  * <weisserm@arcor.de>
  *
  * Configuation settings for the zmx25 board
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -40,22 +39,17 @@
  */
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART2_BASE
-#define CONFIG_CONS_INDEX	1	/* use UART2 for console */
 
 /*
  * Ethernet
  */
 #define CONFIG_FEC_MXC
 #define CONFIG_FEC_MXC_PHYADDR		0x00
-#define CONFIG_MII
 
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -78,7 +72,6 @@
 #endif /* CONFIG_CMD_USB */
 
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM		0x80000000	/* start address of LPDDRRAM */
 #define PHYS_SDRAM_SIZE		0x04000000	/* 64 megs */
 
@@ -107,9 +100,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM + (512*1024))
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM + PHYS_SDRAM_SIZE)
-
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_PREBOOT  ""
 

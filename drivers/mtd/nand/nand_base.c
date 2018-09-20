@@ -3041,7 +3041,7 @@ static int nand_onfi_set_features(struct mtd_info *mtd, struct nand_chip *chip,
 	if (!chip->onfi_version ||
 	    !(le16_to_cpu(chip->onfi_params.opt_cmd)
 	      & ONFI_OPT_CMD_SET_GET_FEATURES))
-		return -EINVAL;
+		return -ENOTSUPP;
 #endif
 
 	chip->cmdfunc(mtd, NAND_CMD_SET_FEATURES, addr, -1);
@@ -3070,7 +3070,7 @@ static int nand_onfi_get_features(struct mtd_info *mtd, struct nand_chip *chip,
 	if (!chip->onfi_version ||
 	    !(le16_to_cpu(chip->onfi_params.opt_cmd)
 	      & ONFI_OPT_CMD_SET_GET_FEATURES))
-		return -EINVAL;
+		return -ENOTSUPP;
 #endif
 
 	chip->cmdfunc(mtd, NAND_CMD_GET_FEATURES, addr, -1);
@@ -3755,7 +3755,7 @@ static bool find_full_id_nand(struct mtd_info *mtd, struct nand_chip *chip,
 /*
  * Get the flash and manufacturer id and lookup if the type is supported.
  */
-static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
+struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 						  struct nand_chip *chip,
 						  int *maf_id, int *dev_id,
 						  struct nand_flash_dev *type)
@@ -3927,6 +3927,7 @@ ident_done:
 		mtd->erasesize >> 10, mtd->writesize, mtd->oobsize);
 	return type;
 }
+EXPORT_SYMBOL(nand_get_flash_type);
 
 #if CONFIG_IS_ENABLED(OF_CONTROL)
 DECLARE_GLOBAL_DATA_PTR;

@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2014 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -274,7 +273,7 @@ int spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
 	bool created = false;
 	int ret;
 
-#if CONFIG_IS_ENABLED(OF_PLATDATA)
+#if CONFIG_IS_ENABLED(OF_PLATDATA) || CONFIG_IS_ENABLED(OF_PRIOR_STAGE)
 	ret = uclass_first_device_err(UCLASS_SPI, &bus);
 #else
 	ret = uclass_get_device_by_seq(UCLASS_SPI, busnum, &bus);

@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2015, Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARMV8_FSL_LAYERSCAPE_CONFIG_H_
@@ -258,6 +257,7 @@
 
 #elif defined(CONFIG_ARCH_LS1046A)
 #define CONFIG_SYS_FMAN_V3
+#define CONFIG_SYS_FSL_QMAN_V3
 #define CONFIG_SYS_NUM_FMAN			1
 #define CONFIG_SYS_NUM_FM1_DTSEC		8
 #define CONFIG_SYS_NUM_FM1_10GEC		2

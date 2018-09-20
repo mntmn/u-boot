@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Rockchip Electronics Co., Ltd
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <dt-bindings/clock/rk3328-cru.h>
@@ -190,8 +189,6 @@
 		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3328-grf", "syscon", "simple-mfd";
 		reg = <0x0 0xff100000 0x0 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
 
 		io_domains: io-domains {
 			compatible = "rockchip,rk3328-io-voltage-domain";

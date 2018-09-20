@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010 Albert ARIBAUD <albert.u.boot@aribaud.net>
  *
@@ -5,8 +6,6 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_EDMINIV2_H
@@ -84,7 +83,6 @@
  * for your console driver.
  */
 
-#define CONFIG_CONS_INDEX	1	/*Console on UART0 */
 #define CONFIG_SYS_BAUDRATE_TABLE \
 	{ 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 }
 
@@ -119,13 +117,11 @@
  */
 
 #ifdef CONFIG_CMD_NET
-#define CONFIG_MVGBE				/* Enable Marvell GbE Driver */
 #define CONFIG_MVGBE_PORTS	{1}		/* enable port 0 only */
 #define CONFIG_SKIP_LOCAL_MAC_RANDOMIZATION	/* don't randomize MAC */
 #define CONFIG_PHY_BASE_ADR	0x8
 #define CONFIG_RESET_PHY_R	/* use reset_phy() to init mv8831116 PHY */
 #define CONFIG_NETCONSOLE	/* include NetConsole support   */
-#define	CONFIG_MII		/* expose smi ove miiphy interface */
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	/* detect link using phy */
 #define CONFIG_ENV_OVERWRITE	/* ethaddr can be reprogrammed */
 #endif
@@ -192,7 +188,6 @@
  * Other required minimal configurations
  */
 #define CONFIG_ARCH_CPU_INIT		/* call arch_cpu_init() */
-#define CONFIG_NR_DRAM_BANKS		1
 
 #define CONFIG_SYS_LOAD_ADDR		0x00800000
 #define CONFIG_SYS_MEMTEST_START	0x00400000
@@ -200,10 +195,8 @@
 #define CONFIG_SYS_RESET_ADDRESS	0xffff0000
 
 /* Enable command line editing */
-#define CONFIG_CMDLINE_EDITING
 
 /* provide extensive help */
-#define CONFIG_SYS_LONGHELP
 
 /* additions for new relocation code, must be added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0

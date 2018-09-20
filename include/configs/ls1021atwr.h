@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -99,7 +98,6 @@
 #endif /* ifdef CONFIG_U_BOOT_HDR_SIZE */
 #endif
 
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			0x80000000
 #define PHYS_SDRAM_SIZE			(1u * 1024 * 1024 * 1024)
 
@@ -209,7 +207,6 @@
 #ifdef CONFIG_LPUART
 #define CONFIG_LPUART_32B_REG
 #else
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #ifndef CONFIG_DM_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -238,7 +235,6 @@
 /*
  * MMC
  */
-#define CONFIG_FSL_ESDHC
 
 /* SPI */
 #if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
@@ -270,10 +266,8 @@
 /*
  * eTSEC
  */
-#define CONFIG_TSEC_ENET
 
 #ifdef CONFIG_TSEC_ENET
-#define CONFIG_MII
 #define CONFIG_MII_DEFAULT_TSEC		1
 #define CONFIG_TSEC1			1
 #define CONFIG_TSEC1_NAME		"eTSEC1"
@@ -323,7 +317,6 @@
 
 #define CONFIG_FSL_DEVICE_DISABLE
 
-#include <config_distro_defaults.h>
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
 	func(USB, usb, 0)
@@ -470,8 +463,6 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_AUTO_COMPLETE
 
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		0x9fffffff
@@ -511,8 +502,6 @@
 #define CONFIG_ENV_SIZE			0x20000
 #define CONFIG_ENV_SECT_SIZE		0x20000 /* 128K (one sector) */
 #endif
-
-#define CONFIG_MISC_INIT_R
 
 #include <asm/fsl_secure_boot.h>
 #define CONFIG_SYS_BOOTM_LEN	(64 << 20) /* Increase max gunzip size */

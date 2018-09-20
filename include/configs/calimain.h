@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011-2014 OMICRON electronics GmbH
  *
@@ -5,8 +6,6 @@
  *
  * Copyright (C) 2010 Texas Instruments Incorporated - http://www.ti.com/
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,7 +14,6 @@
 /*
  * Board
  */
-#define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_MACH_TYPE	MACH_TYPE_CALIMAIN
 
 /*
@@ -27,7 +25,6 @@
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
 #define CONFIG_ARCH_CPU_INIT
-#define CONFIG_DA8XX_GPIO
 #define CONFIG_HW_WATCHDOG
 #define CONFIG_SYS_WDTTIMERBASE	DAVINCI_TIMER1_BASE
 #define CONFIG_SYS_WDT_PERIOD_LOW \
@@ -124,8 +121,6 @@
 /* memtest will be run on 16MB */
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + (16 << 20))
 
-#define CONFIG_NR_DRAM_BANKS	1 /* we have 1 bank of DRAM */
-
 /*
  * Serial Driver info
  */
@@ -133,7 +128,6 @@
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART2_BASE /* Base address of UART2 */
 #define CONFIG_SYS_NS16550_CLK	clk_get(DAVINCI_UART2_CLKID)
-#define CONFIG_CONS_INDEX	1		/* use UART0 for console */
 
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_CFI
@@ -156,8 +150,6 @@
  * Network & Ethernet Configuration
  */
 #ifdef CONFIG_DRIVER_TI_EMAC
-#define CONFIG_MII
-#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT	10
@@ -171,9 +163,6 @@
 #define CONFIG_SYS_BARGSIZE    CONFIG_SYS_CBSIZE /* Boot Args Buffer Size */
 #define CONFIG_SYS_LOAD_ADDR   (PHYS_SDRAM_1 + 0x700000)
 #define CONFIG_LOADADDR        0xc0700000
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_LONGHELP
 #define CONFIG_MX_CYCLIC
 
 /*
@@ -262,7 +251,6 @@
 	"verify=n\0"							\
 	"clearenv=protect off all;"					\
 		"erase 0x60040000 +0x40000;\0"				\
-	"bootlimit=3\0"							\
 	"altbootcmd=run bootrlk\0"
 
 #define CONFIG_PREBOOT			\
@@ -278,7 +266,6 @@
 #define CONFIG_SYS_INIT_SP_ADDR		(0x8001ff00)
 
 #define CONFIG_SYS_BOOTCOUNT_LE		/* Use little-endian accessors */
-#define CONFIG_SYS_BOOTCOUNT_ADDR	DAVINCI_RTC_BASE
 
 #ifndef __ASSEMBLY__
 int calimain_get_osc_freq(void);

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * fat.c
  *
@@ -5,8 +6,6 @@
  *
  * 2002-07-28 - rjones@nexus-tech.net - ported to ppcboot v1.1.6
  * 2003-03-10 - kharris@nexus-tech.net - ported to uboot
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -1096,7 +1095,7 @@ int file_fat_read_at(const char *filename, loff_t pos, void *buffer,
 	if (ret)
 		goto out_free_both;
 
-	debug("reading %s\n", filename);
+	debug("reading %s at pos %llu\n", filename, pos);
 	ret = get_contents(&fsdata, itr->dent, pos, buffer, maxsize, actread);
 
 out_free_both:

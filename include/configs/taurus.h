@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Common board functions for Siemens TAURUS (AT91SAM9G20) based boards
  * (C) Copyright 2013 Siemens AG
@@ -8,8 +9,6 @@
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -59,7 +58,6 @@
  * SDRAM: 1 bank, min 32, max 128 MB
  * Initialized before u-boot gets started.
  */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		ATMEL_BASE_CS1
 #define CONFIG_SYS_SDRAM_SIZE		(128 * SZ_1M)
 
@@ -73,7 +71,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
@@ -106,8 +103,6 @@
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
 
 /* USB DFU support */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 
 #define CONFIG_USB_GADGET_AT91
 
@@ -117,14 +112,11 @@
 #endif
 
 /* SPI EEPROM */
-#define CONFIG_SPI
-#define CONFIG_ATMEL_SPI
 #define TAURUS_SPI_MASK (1 << 4)
 #define TAURUS_SPI_CS_PIN	AT91_PIN_PA3
 
 #if defined(CONFIG_SPL_BUILD)
 /* SPL related */
-#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x20000
 
 #define CONFIG_SF_DEFAULT_BUS 0
@@ -140,10 +132,6 @@
 #define CONFIG_ENV_OFFSET_REDUND	0x180000
 #define CONFIG_ENV_SIZE		(SZ_128K)	/* 1 sector = 128 kB */
 #define CONFIG_BOOTCOMMAND	"nand read 0x22000000 0x200000 0x300000; bootm"
-
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_AUTO_COMPLETE
 
 /*
  * Size of malloc() pool

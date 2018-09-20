@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for MPR2
  *
  * Copyright (C) 2008
  * Mark Jonas <mark.jonas@de.bosch.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MPR2_H
@@ -22,7 +21,6 @@
 #define CONFIG_DISPLAY_BOARDINFO
 
 /* U-Boot internals */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }	/* List of legal baudrate settings for this board */
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 32 * 1024 * 1024)
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_FLASH_BASE
@@ -51,9 +49,7 @@
 
 /* Clocks */
 #define CONFIG_SYS_CLK_FREQ	24000000
-#define CONFIG_SH_TMU_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
-#define CONFIG_SYS_TMU_CLK_DIV		4	/* 4 (default), 16, 64, 256 or 1024 */
 
 /* UART */
 #define CONFIG_CONS_SCIF0	1

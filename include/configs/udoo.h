@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Freescale Semiconductor, Inc.
  *
  * Configuration settings for Udoo board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -34,7 +33,6 @@
 /* Network support */
 
 #define CONFIG_FEC_MXC
-#define CONFIG_MII
 #define IMX_FEC_BASE                    ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE             RGMII
 #define CONFIG_ETHPRIME                 "FEC"
@@ -45,8 +43,6 @@
 
 /* MMC Configuration */
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
-
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
@@ -145,7 +141,6 @@
 	   "else run netboot; fi"
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM

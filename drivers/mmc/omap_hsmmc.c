@@ -93,7 +93,7 @@ struct omap_hsmmc_data {
 	enum bus_mode mode;
 #endif
 	u8 controller_flags;
-#ifndef CONFIG_OMAP34XX
+#ifdef CONFIG_MMC_OMAP_HS_ADMA
 	struct omap_hsmmc_adma_desc *adma_desc_table;
 	uint desc_slot;
 #endif
@@ -117,7 +117,7 @@ struct omap_mmc_of_data {
 	u8 controller_flags;
 };
 
-#ifndef CONFIG_OMAP34XX
+#ifdef CONFIG_MMC_OMAP_HS_ADMA
 struct omap_hsmmc_adma_desc {
 	u8 attr;
 	u8 reserved;
@@ -741,7 +741,7 @@ static int omap_hsmmc_init_setup(struct mmc *mmc)
 			return -ETIMEDOUT;
 		}
 	}
-#ifndef CONFIG_OMAP34XX
+#ifdef CONFIG_MMC_OMAP_HS_ADMA
 	reg_val = readl(&mmc_base->hl_hwinfo);
 	if (reg_val & MADMA_EN)
 		priv->controller_flags |= OMAP_HSMMC_USE_ADMA;
@@ -834,7 +834,7 @@ static void mmc_reset_controller_fsm(struct hsmmc *mmc_base, u32 bit)
 	}
 }
 
-#ifndef CONFIG_OMAP34XX
+#ifdef CONFIG_MMC_OMAP_HS_ADMA
 static void omap_hsmmc_adma_desc(struct mmc *mmc, char *buf, u16 len, bool end)
 {
 	struct omap_hsmmc_data *priv = omap_hsmmc_get_data(mmc);
@@ -1037,7 +1037,7 @@ static int omap_hsmmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 		else
 			flags |= (DP_DATA | DDIR_WRITE);
 
-#ifndef CONFIG_OMAP34XX
+#ifdef CONFIG_MMC_OMAP_HS_ADMA
 		if ((priv->controller_flags & OMAP_HSMMC_USE_ADMA) &&
 		    !mmc_is_tuning_cmd(cmd->cmdidx)) {
 			omap_hsmmc_prepare_data(mmc, data);
@@ -1082,7 +1082,7 @@ static int omap_hsmmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 		}
 	}
 
-#ifndef CONFIG_OMAP34XX
+#ifdef CONFIG_MMC_OMAP_HS_ADMA
 	if ((priv->controller_flags & OMAP_HSMMC_USE_ADMA) && data &&
 	    !mmc_is_tuning_cmd(cmd->cmdidx)) {
 		u32 sz_mb, timeout;
@@ -1181,8 +1181,9 @@ static int mmc_read_data(struct hsmmc *mmc_base, char *buf, unsigned int size)
 	return 0;
 }
 
+#if CONFIG_IS_ENABLED(MMC_WRITE)
 static int mmc_write_data(struct hsmmc *mmc_base, const char *buf,
-				unsigned int size)
+			  unsigned int size)
 {
 	unsigned int *input_buf = (unsigned int *)buf;
 	unsigned int mmc_stat;
@@ -1235,7 +1236,13 @@ static int mmc_write_data(struct hsmmc *mmc_base, const char *buf,
 	}
 	return 0;
 }
-
+#else
+static int mmc_write_data(struct hsmmc *mmc_base, const char *buf,
+			  unsigned int size)
+{
+	return -ENOTSUPP;
+}
+#endif
 static void omap_hsmmc_stop_clock(struct hsmmc *mmc_base)
 {
 	writel(readl(&mmc_base->sysctl) & ~CEN_ENABLE, &mmc_base->sysctl);
@@ -1358,9 +1365,10 @@ static int omap_hsmmc_set_ios(struct udevice *dev)
 static int omap_hsmmc_getcd(struct udevice *dev)
 {
 	struct omap_hsmmc_data *priv = dev_get_priv(dev);
-	int value;
-
+	int value = -1;
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	value = dm_gpio_get_value(&priv->cd_gpio);
+#endif
 	/* if no CD return as 1 */
 	if (value < 0)
 		return 1;
@@ -1372,10 +1380,11 @@ static int omap_hsmmc_getcd(struct udevice *dev)
 
 static int omap_hsmmc_getwp(struct udevice *dev)
 {
+	int value = 0;
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct omap_hsmmc_data *priv = dev_get_priv(dev);
-	int value;
-
 	value = dm_gpio_get_value(&priv->wp_gpio);
+#endif
 	/* if no WP return as 0 */
 	if (value < 0)
 		return 0;
@@ -1825,6 +1834,8 @@ static int omap_hsmmc_ofdata_to_platdata(struct udevice *dev)
 	if (ret < 0)
 		return ret;
 
+	if (!cfg->f_max)
+		cfg->f_max = 52000000;
 	cfg->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
 	cfg->f_min = 400000;
 	cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
@@ -1858,8 +1869,8 @@ static int omap_hsmmc_ofdata_to_platdata(struct udevice *dev)
 static int omap_hsmmc_bind(struct udevice *dev)
 {
 	struct omap_hsmmc_plat *plat = dev_get_platdata(dev);
-
-	return mmc_bind(dev, &plat->mmc, &plat->cfg);
+	plat->mmc = calloc(1, sizeof(struct mmc));
+	return mmc_bind(dev, plat->mmc, &plat->cfg);
 }
 #endif
 static int omap_hsmmc_probe(struct udevice *dev)
@@ -1882,7 +1893,7 @@ static int omap_hsmmc_probe(struct udevice *dev)
 #endif
 
 #ifdef CONFIG_BLK
-	mmc = &plat->mmc;
+	mmc = plat->mmc;
 #else
 	mmc = mmc_create(cfg, priv);
 	if (mmc == NULL)
@@ -1892,9 +1903,11 @@ static int omap_hsmmc_probe(struct udevice *dev)
 	device_get_supply_regulator(dev, "pbias-supply",
 				    &priv->pbias_supply);
 #endif
-#if defined(OMAP_HSMMC_USE_GPIO) && CONFIG_IS_ENABLED(OF_CONTROL)
+#if defined(OMAP_HSMMC_USE_GPIO)
+#if CONFIG_IS_ENABLED(OF_CONTROL) && CONFIG_IS_ENABLED(DM_GPIO)
 	gpio_request_by_name(dev, "cd-gpios", 0, &priv->cd_gpio, GPIOD_IS_IN);
 	gpio_request_by_name(dev, "wp-gpios", 0, &priv->wp_gpio, GPIOD_IS_IN);
+#endif
 #endif
 
 	mmc->dev = dev;

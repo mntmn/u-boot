@@ -1,17 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2017 NXP
  * Copyright 2015 Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LS2_RDB_H
 #define __LS2_RDB_H
 
 #include "ls2080a_common.h"
-
-#undef CONFIG_CONS_INDEX
-#define CONFIG_CONS_INDEX       2
 
 #ifdef CONFIG_FSL_QSPI
 #ifdef CONFIG_TARGET_LS2081ARDB
@@ -285,12 +281,8 @@ unsigned long get_board_sys_clk(void);
 
 /* SPI */
 #if defined(CONFIG_FSL_QSPI) || defined(CONFIG_FSL_DSPI)
-#define CONFIG_SPI_FLASH
 #ifdef CONFIG_FSL_DSPI
 #define CONFIG_SPI_FLASH_STMICRO
-#endif
-#ifdef CONFIG_FSL_QSPI
-#define CONFIG_SPI_FLASH_SPANSION
 #endif
 #define FSL_QSPI_FLASH_SIZE		SZ_64M	/* 64MB */
 #define FSL_QSPI_FLASH_NUM		2
@@ -325,14 +317,8 @@ unsigned long get_board_sys_clk(void);
 
 /*  MMC  */
 #ifdef CONFIG_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_MMC_HAS_CAPBLT_VS33
 #endif
-
-#define CONFIG_MISC_INIT_R
-
-#undef CONFIG_CMDLINE_EDITING
-#include <config_distro_defaults.h>
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(USB, usb, 0) \
@@ -375,7 +361,7 @@ unsigned long get_board_sys_clk(void);
 	"fdt_high=0xa0000000\0"			\
 	"initrd_high=0xffffffffffffffff\0"	\
 	"fdt_addr=0x64f00000\0"			\
-	"kernel_addr=0x65000000\0"		\
+	"kernel_addr=0x581000000\0"		\
 	"kernel_start=0x1000000\0"		\
 	"kernelheader_start=0x800000\0"		\
 	"scriptaddr=0x80000000\0"		\
@@ -445,8 +431,8 @@ unsigned long get_board_sys_clk(void);
 			"&& esbc_validate 0x20780000; "			\
 			"env exists mcinitcmd && "			\
 			"fsl_mc lazyapply dpl 0x20d00000; "		\
-			"run distro_bootcmd;env exists secureboot "	\
-			" && esbc_halt;run qspi_bootcmd; "
+			"run distro_bootcmd;run qspi_bootcmd; "		\
+			"env exists secureboot && esbc_halt;"
 #elif defined(CONFIG_SD_BOOT)
 /* Try to boot an on-SD kernel first, then do normal distro boot */
 #define CONFIG_BOOTCOMMAND						\
@@ -456,16 +442,16 @@ unsigned long get_board_sys_clk(void);
 			"env exists mcinitcmd && run mcinitcmd "	\
 			"&& mmc read 0x88000000 0x6800 0x800 "		\
 			"&& fsl_mc lazyapply dpl 0x88000000; "		\
-			"run distro_bootcmd;env exists secureboot "	\
-			"&& esbc_halt;run sd_bootcmd;"
+			"run distro_bootcmd;run sd_bootcmd; "		\
+			"env exists secureboot && esbc_halt;"
 #else
 /* Try to boot an on-NOR kernel first, then do normal distro boot */
 #define CONFIG_BOOTCOMMAND						\
 			"env exists mcinitcmd && env exists secureboot "\
 			"&& esbc_validate 0x580780000; env exists mcinitcmd "\
 			"&& fsl_mc lazyapply dpl 0x580d00000;"		\
-			"run distro_bootcmd; env exists secureboot "	\
-			"&& esbc_halt; run nor_bootcmd;"
+			"run distro_bootcmd;run nor_bootcmd; "		\
+			"env exists secureboot && esbc_halt;"
 #endif
 
 /* MAC/PHY configuration */
@@ -491,7 +477,6 @@ unsigned long get_board_sys_clk(void);
 #define AQ_PHY_ADDR4		0x03
 #define AQR405_IRQ_MASK		0x36
 
-#define CONFIG_MII
 #define CONFIG_ETHPRIME		"DPMAC1@xgmii"
 #define CONFIG_PHY_AQUANTIA
 #endif

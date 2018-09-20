@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
@@ -8,8 +9,6 @@
  * esd electronic system design gmbh <www.esd.eu>
  *
  * Configuation settings for the esd MEESC board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -40,7 +39,6 @@
 #define CONFIG_SERIAL_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_CMDLINE_TAG			/* enable passing of ATAGs */
-#define CONFIG_MISC_INIT_R			/* Call misc_init_r */
 
 #define CONFIG_PREBOOT				/* enable preboot variable */
 
@@ -52,9 +50,6 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * SDRAM: 1 bank, min 32, max 128 MB
@@ -63,7 +58,6 @@
 #define PHYS_SDRAM					ATMEL_BASE_CS1 /* 0x20000000 */
 #define PHYS_SDRAM_SIZE				0x02000000     /* 32 MByte */
 
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
 #define CONFIG_SYS_SDRAM_SIZE		PHYS_SDRAM_SIZE
 
@@ -81,7 +75,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-# define CONFIG_NAND_ATMEL
 # define CONFIG_SYS_MAX_NAND_DEVICE		1
 # define CONFIG_SYS_NAND_BASE			ATMEL_BASE_CS3 /* 0x40000000 */
 # define CONFIG_SYS_NAND_DBW_8
@@ -117,9 +110,6 @@
 #endif
 
 #define CONFIG_SYS_CBSIZE		512
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_AUTO_COMPLETE
 
 /*
  * Size of malloc() pool

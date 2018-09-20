@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas Solutions r0p7734 board
  *
  * Copyright (C) 2010, 2011 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __R0P7734_H
@@ -25,7 +24,6 @@
 #define CONFIG_SH_ETHER_PHY_MODE PHY_INTERFACE_MODE_MII
 
 /* undef to save memory	*/
-#define CONFIG_SYS_LONGHELP
 /* List of legal baudrate settings for this board */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }
 
@@ -43,7 +41,6 @@
 #define CONFIG_SYS_MEMTEST_START (CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END	 (CONFIG_SYS_MEMTEST_START + 100 * 1024 * 1024)
 /* Enable alternate, more extensive, memory test */
-#undef  CONFIG_SYS_ALT_MEMTEST
 /* Scratch address used by the alternate memory test */
 #undef  CONFIG_SYS_MEMTEST_SCRATCH
 
@@ -101,8 +98,6 @@
 #else
 #define CONFIG_SYS_CLK_FREQ 44444444
 #endif
-#define CONFIG_SH_TMU_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
-#define CONFIG_SYS_TMU_CLK_DIV      4
 
 #endif	/* __R0P7734_H */

@@ -1,13 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2012-2016 Stephen Warren
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
-#include <inttypes.h>
 #include <config.h>
 #include <dm.h>
+#include <environment.h>
 #include <efi_loader.h>
 #include <fdt_support.h>
 #include <fdt_simplefb.h>
@@ -91,10 +90,35 @@ static const struct rpi_model rpi_model_unknown = {
 };
 
 static const struct rpi_model rpi_models_new_scheme[] = {
+	[0x0] = {
+		"Model A",
+		DTB_DIR "bcm2835-rpi-a.dtb",
+		false,
+	},
+	[0x1] = {
+		"Model B",
+		DTB_DIR "bcm2835-rpi-b.dtb",
+		true,
+	},
+	[0x2] = {
+		"Model A+",
+		DTB_DIR "bcm2835-rpi-a-plus.dtb",
+		false,
+	},
+	[0x3] = {
+		"Model B+",
+		DTB_DIR "bcm2835-rpi-b-plus.dtb",
+		true,
+	},
 	[0x4] = {
 		"2 Model B",
 		DTB_DIR "bcm2836-rpi-2-b.dtb",
 		true,
+	},
+	[0x6] = {
+		"Compute Module",
+		DTB_DIR "bcm2835-rpi-cm.dtb",
+		false,
 	},
 	[0x8] = {
 		"3 Model B",
@@ -106,10 +130,20 @@ static const struct rpi_model rpi_models_new_scheme[] = {
 		DTB_DIR "bcm2835-rpi-zero.dtb",
 		false,
 	},
+	[0xA] = {
+		"Compute Module 3",
+		DTB_DIR "bcm2837-rpi-cm3.dtb",
+		false,
+	},
 	[0xC] = {
 		"Zero W",
 		DTB_DIR "bcm2835-rpi-zero-w.dtb",
 		false,
+	},
+	[0xD] = {
+		"3 Model B+",
+		DTB_DIR "bcm2837-rpi-3-b-plus.dtb",
+		true,
 	},
 };
 
@@ -349,7 +383,7 @@ static void set_serial_number(void)
 		return;
 	}
 
-	snprintf(serial_string, sizeof(serial_string), "%016" PRIx64,
+	snprintf(serial_string, sizeof(serial_string), "%016llx",
 		 msg->get_board_serial.body.resp.serial);
 	env_set("serial#", serial_string);
 }

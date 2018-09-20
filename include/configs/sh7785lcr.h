@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas Technology R0P7785LC0011RL board
  *
  * Copyright (C) 2008 Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SH7785LCR_H
@@ -36,7 +35,6 @@
 #define SH7785LCR_USB_BASE		(0xb4000000)
 #endif
 
-#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PBSIZE		256
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }
 
@@ -48,7 +46,6 @@
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + \
 					(SH7785LCR_SDRAM_SIZE) - \
 					 4 * 1024 * 1024)
-#undef	CONFIG_SYS_ALT_MEMTEST
 #undef	CONFIG_SYS_MEMTEST_SCRATCH
 #undef	CONFIG_SYS_LOADS_BAUD_CHANGE
 
@@ -129,8 +126,6 @@
 /* Board Clock */
 /* The SCIF used external clock. system clock only used timer. */
 #define CONFIG_SYS_CLK_FREQ	50000000
-#define CONFIG_SH_TMU_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
-#define CONFIG_SYS_TMU_CLK_DIV		4
 
 #endif	/* __SH7785LCR_H */

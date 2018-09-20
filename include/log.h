@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Logging support
  *
  * Copyright (c) 2017 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LOG_H
@@ -46,7 +45,7 @@ enum log_category_t {
 	LOGC_CORE,
 	LOGC_DM,	/* Core driver-model */
 	LOGC_DT,	/* Device-tree */
-	LOGL_EFI,	/* EFI implementation */
+	LOGC_EFI,	/* EFI implementation */
 
 	LOGC_COUNT,
 	LOGC_END,
@@ -167,8 +166,16 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line,
 		log(LOG_CATEGORY, LOGL_ERR, "returning err=%d\n", __ret); \
 	__ret; \
 	})
+#define log_msg_ret(_msg, _ret) ({ \
+	int __ret = (_ret); \
+	if (__ret < 0) \
+		log(LOG_CATEGORY, LOGL_ERR, "%s: returning err=%d\n", _msg, \
+		    __ret); \
+	__ret; \
+	})
 #else
 #define log_ret(_ret) (_ret)
+#define log_msg_ret(_ret) (_ret)
 #endif
 
 /**
@@ -275,7 +282,8 @@ struct log_filter {
  * log_get_cat_name() - Get the name of a category
  *
  * @cat: Category to look up
- * @return category name (which may be a uclass driver name)
+ * @return category name (which may be a uclass driver name) if found, or
+ *	 "<invalid>" if invalid, or "<missing>" if not found
  */
 const char *log_get_cat_name(enum log_category_t cat);
 

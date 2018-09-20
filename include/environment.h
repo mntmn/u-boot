@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ENVIRONMENT_H_
@@ -273,10 +272,10 @@ void env_crc_update(void);
 char *env_get_default(const char *name);
 
 /* [re]set to the default environment */
-void set_default_env(const char *s);
+void set_default_env(const char *s, int flags);
 
 /* [re]set individual variables to their value in the default environment */
-int set_default_vars(int nvars, char * const vars[]);
+int set_default_vars(int nvars, char * const vars[], int flags);
 
 /* Import from binary representation into hash table */
 int env_import(const char *buf, int check);
@@ -293,7 +292,7 @@ int env_import_redund(const char *buf1, int buf1_status,
 /**
  * env_get_char() - Get a character from the early environment
  *
- * This reads from the pre-relocation environemnt
+ * This reads from the pre-relocation environment
  *
  * @index: Index of character to read (0 = first)
  * @return character read, or -ve on error
@@ -313,6 +312,15 @@ int env_load(void);
  * @return 0 if OK, -ve on error
  */
 int env_save(void);
+
+/**
+ * env_fix_drivers() - Updates envdriver as per relocation
+ */
+void env_fix_drivers(void);
+
+void eth_parse_enetaddr(const char *addr, uint8_t *enetaddr);
+int eth_env_get_enetaddr(const char *name, uint8_t *enetaddr);
+int eth_env_set_enetaddr(const char *name, const uint8_t *enetaddr);
 
 #endif /* DO_DEPS_ONLY */
 

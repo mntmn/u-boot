@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2017 Linaro
  *
@@ -5,8 +6,6 @@
  *
  * Configuration for Poplar 96boards CE. Parts were derived from other ARM
  * configurations.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _POPLAR_H_
@@ -15,7 +14,6 @@
 #include <linux/sizes.h>
 
 /* DRAM banks */
-#define CONFIG_NR_DRAM_BANKS			2
 
 /* SYS */
 #define CONFIG_SYS_BOOTM_LEN			SZ_64M
@@ -40,7 +38,6 @@
 					func(MMC, mmc, 0)		\
 					func(DHCP, dhcp, na)
 #ifndef CONFIG_SPL_BUILD
-#include <config_distro_defaults.h>
 #include <config_distro_bootcmd.h>
 #endif
 
@@ -62,11 +59,8 @@
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_OFFSET		(0x780 * 512)	/* env_mmc_blknum */
 #define CONFIG_ENV_SIZE			0x10000	/* env_mmc_nblks bytes */
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
 
 /* Monitor Command Prompt */
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_CBSIZE		512
 #define CONFIG_SYS_MAXARGS		64
 

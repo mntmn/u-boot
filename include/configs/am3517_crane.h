@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * am3517_crane.h - Default configuration for AM3517 CraneBoard.
  *
@@ -6,8 +7,6 @@
  * Based on include/configs/am3517evm.h
  *
  * Copyright (C) 2011 Mistral Solutions pvt Ltd
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -23,8 +22,6 @@
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
-
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
@@ -58,9 +55,7 @@
 /*
  * select serial console configuration
  */
-#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
-#define CONFIG_SERIAL3			3	/* UART3 on CRANEBOARD */
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -101,8 +96,6 @@
 /*
  * Board NAND Info.
  */
-#define CONFIG_SYS_NAND_ADDR		NAND_BASE	/* physical address */
-							/* to access nand */
 #define CONFIG_SYS_NAND_BASE		NAND_BASE	/* physical address */
 							/* to access */
 							/* nand at CS0 */
@@ -155,11 +148,9 @@
 		"fi; " \
 	"else run nandboot; fi"
 
-#define CONFIG_AUTO_COMPLETE	1
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 #define CONFIG_SYS_MAXARGS		32	/* max number of command */
 						/* args */
@@ -182,7 +173,6 @@
 /*-----------------------------------------------------------------------
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS	2	/* CS1 may or may not be populated */
 #define PHYS_SDRAM_1		OMAP34XX_SDRC_CS0
 #define PHYS_SDRAM_2		OMAP34XX_SDRC_CS1
 

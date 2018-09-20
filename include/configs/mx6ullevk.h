@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6UL 14x14 EVK board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __MX6ULLEVK_CONFIG_H
 #define __MX6ULLEVK_CONFIG_H
@@ -21,8 +20,6 @@
 #endif
 
 #define PHYS_SDRAM_SIZE	SZ_512M
-
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
@@ -136,7 +133,6 @@
 #define CONFIG_SYS_HZ			1000
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM

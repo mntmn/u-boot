@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2017 Intel Corporation
  *
  * Partially based on southcluster.asl for other x86 platforms
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 Device (PCI0)
@@ -215,6 +214,16 @@ Device (PCI0)
     Device (I2C1)
     {
         Name (_ADR, 0x00080000)
+
+        Method (_STA, 0, NotSerialized)
+        {
+            Return (STA_VISIBLE)
+        }
+    }
+
+    Device (I2C6)
+    {
+        Name (_ADR, 0x00090001)
 
         Method (_STA, 0, NotSerialized)
         {

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Net Insight <www.netinsight.net>
@@ -7,8 +8,6 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_OPENRD_H
@@ -24,7 +23,6 @@
 /*
  * Commands configuration
  */
-#define CONFIG_SYS_MVFS
 
 /*
  * mv-common.h should be defined after CMD configs since it used them
@@ -62,9 +60,7 @@
 	CONFIG_MTDPARTS_DEFAULT " rw ubi.mtd=2,2048\0" \
 	"x_bootcmd_kernel=nand read 0x6400000 0x100000 0x300000\0"	\
 	"x_bootcmd_usb=usb start\0"					\
-	"x_bootargs_root=root=ubi0:rootfs rootfstype=ubifs\0"		\
-	"mtdids="CONFIG_MTDIDS_DEFAULT"\0"					\
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT"\0"
+	"x_bootargs_root=root=ubi0:rootfs rootfstype=ubifs\0"
 
 /*
  * Ethernet Driver configuration

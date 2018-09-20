@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_UCLASS_H
@@ -59,6 +58,7 @@ struct udevice;
  * @post_probe: Called after a new device is probed
  * @pre_remove: Called before a device is removed
  * @child_post_bind: Called after a child is bound to a device in this uclass
+ * @child_pre_probe: Called before a child is probed in this uclass
  * @init: Called to set up the uclass
  * @destroy: Called to destroy the uclass
  * @priv_auto_alloc_size: If non-zero this is the size of the private data
@@ -211,6 +211,22 @@ int uclass_get_device_by_ofnode(enum uclass_id id, ofnode node,
 				struct udevice **devp);
 
 /**
+ * uclass_get_device_by_phandle_id() - Get a uclass device by phandle id
+ *
+ * This searches the devices in the uclass for one with the given phandle id.
+ *
+ * The device is probed to activate it ready for use.
+ *
+ * @id: uclass ID to look up
+ * @phandle_id: the phandle id to look up
+ * @devp: Returns pointer to device (there is only one for each node)
+ * @return 0 if OK, -ENODEV if there is no device match the phandle, other
+ *	-ve on error
+ */
+int uclass_get_device_by_phandle_id(enum uclass_id id, uint phandle_id,
+				    struct udevice **devp);
+
+/**
  * uclass_get_device_by_phandle() - Get a uclass device by phandle
  *
  * This searches the devices in the uclass for one with the given phandle.
@@ -287,7 +303,7 @@ int uclass_first_device_err(enum uclass_id id, struct udevice **devp);
 int uclass_next_device(struct udevice **devp);
 
 /**
- * uclass_first_device() - Get the first device in a uclass
+ * uclass_first_device_check() - Get the first device in a uclass
  *
  * The device returned is probed if necessary, and ready for use
  *
@@ -303,7 +319,7 @@ int uclass_next_device(struct udevice **devp);
 int uclass_first_device_check(enum uclass_id id, struct udevice **devp);
 
 /**
- * uclass_next_device() - Get the next device in a uclass
+ * uclass_next_device_check() - Get the next device in a uclass
  *
  * The device returned is probed if necessary, and ready for use
  *

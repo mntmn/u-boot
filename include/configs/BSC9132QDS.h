@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -10,8 +9,6 @@
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
-
-#define CONFIG_MISC_INIT_R
 
 #ifdef CONFIG_SDCARD
 #define CONFIG_RAMBOOT_SDCARD
@@ -88,7 +85,6 @@
 #endif
 
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_TSEC_ENET /* ethernet */
 
 #if defined(CONFIG_SYS_CLK_100_DDR_100)
 #define CONFIG_SYS_CLK_FREQ	100000000
@@ -97,8 +93,6 @@
 #define CONFIG_SYS_CLK_FREQ	100000000
 #define CONFIG_DDR_CLK_FREQ	133000000
 #endif
-
-#define CONFIG_MP
 
 #define CONFIG_HWCONFIG
 /*
@@ -356,8 +350,6 @@ combinations. this should be removed later
 #define CONFIG_SYS_CS1_FTIM3		CONFIG_SYS_NAND_FTIM3
 #endif
 
-#define CONFIG_BOARD_EARLY_INIT_R
-
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xffd00000	/* stack in RAM */
 #define CONFIG_SYS_INIT_RAM_SIZE	0x00004000 /* End of used area in RAM */
@@ -370,7 +362,6 @@ combinations. this should be removed later
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)	/* Reserved for malloc*/
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX	1
 #undef	CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -429,7 +420,6 @@ combinations. this should be removed later
 
 #if defined(CONFIG_TSEC_ENET)
 
-#define CONFIG_MII			/* MII PHY management */
 #define CONFIG_MII_DEFAULT_TSEC	1	/* Allow unregistered phys */
 #define CONFIG_TSEC1	1
 #define CONFIG_TSEC1_NAME	"eTSEC1"
@@ -458,7 +448,6 @@ combinations. this should be removed later
 #endif	/* CONFIG_TSEC_ENET */
 
 #ifdef CONFIG_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
 #endif
 
@@ -502,9 +491,6 @@ combinations. this should be removed later
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
-#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
-#define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*
@@ -523,8 +509,6 @@ combinations. this should be removed later
  * Dynamic MTD Partition support with mtdparts
  */
 #ifdef CONFIG_MTD_NOR_FLASH
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #define CONFIG_FLASH_CFI_MTD
 #endif
 /*
@@ -536,7 +520,7 @@ combinations. this should be removed later
 #define CONFIG_HAS_ETH1
 #endif
 
-#define CONFIG_HOSTNAME		BSC9132qds
+#define CONFIG_HOSTNAME		"BSC9132qds"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	"u-boot.bin"

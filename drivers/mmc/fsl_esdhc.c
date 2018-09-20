@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007, 2010-2011 Freescale Semiconductor, Inc
  * Andy Fleming
@@ -5,8 +6,6 @@
  * Based vaguely on the pxa mmc code:
  * (C) Copyright 2003
  * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -663,6 +662,7 @@ static int esdhc_change_pinstate(struct udevice *dev)
 		break;
 	case UHS_SDR104:
 	case MMC_HS_200:
+	case MMC_HS_400:
 		ret = pinctrl_select_state(dev, "state_200mhz");
 		break;
 	default:
@@ -690,6 +690,33 @@ static void esdhc_reset_tuning(struct mmc *mmc)
 	}
 }
 
+static void esdhc_set_strobe_dll(struct mmc *mmc)
+{
+	struct fsl_esdhc_priv *priv = dev_get_priv(mmc->dev);
+	struct fsl_esdhc *regs = priv->esdhc_regs;
+	u32 val;
+
+	if (priv->clock > ESDHC_STROBE_DLL_CLK_FREQ) {
+		writel(ESDHC_STROBE_DLL_CTRL_RESET, &regs->strobe_dllctrl);
+
+		/*
+		 * enable strobe dll ctrl and adjust the delay target
+		 * for the uSDHC loopback read clock
+		 */
+		val = ESDHC_STROBE_DLL_CTRL_ENABLE |
+			(priv->strobe_dll_delay_target <<
+			 ESDHC_STROBE_DLL_CTRL_SLV_DLY_TARGET_SHIFT);
+		writel(val, &regs->strobe_dllctrl);
+		/* wait 1us to make sure strobe dll status register stable */
+		mdelay(1);
+		val = readl(&regs->strobe_dllstat);
+		if (!(val & ESDHC_STROBE_DLL_STS_REF_LOCK))
+			pr_warn("HS400 strobe DLL status REF not lock!\n");
+		if (!(val & ESDHC_STROBE_DLL_STS_SLV_LOCK))
+			pr_warn("HS400 strobe DLL status SLV not lock!\n");
+	}
+}
+
 static int esdhc_set_timing(struct mmc *mmc)
 {
 	struct fsl_esdhc_priv *priv = dev_get_priv(mmc->dev);
@@ -703,6 +730,12 @@ static int esdhc_set_timing(struct mmc *mmc)
 	case MMC_LEGACY:
 	case SD_LEGACY:
 		esdhc_reset_tuning(mmc);
+		writel(mixctrl, &regs->mixctrl);
+		break;
+	case MMC_HS_400:
+		mixctrl |= MIX_CTRL_DDREN | MIX_CTRL_HS400_EN;
+		writel(mixctrl, &regs->mixctrl);
+		esdhc_set_strobe_dll(mmc);
 		break;
 	case MMC_HS:
 	case MMC_HS_52:
@@ -983,7 +1016,7 @@ static int esdhc_init_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 #endif
 
 	/* Set the initial clock speed */
-	mmc_set_clock(mmc, 400000, false);
+	mmc_set_clock(mmc, 400000, MMC_CLK_ENABLE);
 
 	/* Disable the BRR and BWR bits in IRQSTAT */
 	esdhc_clrbits32(&regs->irqstaten, IRQSTATEN_BRR | IRQSTATEN_BWR);
@@ -1439,7 +1472,7 @@ static int fsl_esdhc_probe(struct udevice *dev)
 #endif
 
 	if (fdt_get_property(fdt, node, "no-1-8-v", NULL))
-		priv->caps &= ~(UHS_CAPS | MMC_MODE_HS200);
+		priv->caps &= ~(UHS_CAPS | MMC_MODE_HS200 | MMC_MODE_HS400);
 
 	/*
 	 * TODO:

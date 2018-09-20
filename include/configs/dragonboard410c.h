@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Board configuration file for Dragonboard 410C
  *
  * (C) Copyright 2015 Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIGS_DRAGONBOARD410C_H
@@ -12,10 +11,7 @@
 #include <linux/sizes.h>
 #include <asm/arch/sysmap-apq8016.h>
 
-#define CONFIG_MISC_INIT_R /* To stop autoboot */
-
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM_1			0x80000000
 /* 1008 MB (the last ~30Mb are secured for TrustZone by ATF*/
 #define PHYS_SDRAM_1_SIZE		0x3da00000
@@ -41,8 +37,6 @@
 /* Enable that for switching of boot partitions */
 /* Disabled by default as some sub-commands can brick eMMC */
 /*#define CONFIG_SUPPORT_EMMC_BOOT */
-
-#include <config_distro_defaults.h>
 
 /* BOOTP options */
 #define CONFIG_BOOTP_BOOTFILESIZE
@@ -97,7 +91,7 @@ REFLASH(dragonboard/u-boot.img, 8)\
 
 #define CONFIG_ENV_SIZE			0x2000
 #define CONFIG_SYS_MMC_ENV_DEV		0	/* mmc0 = emmc, mmc1 = sd */
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
+#define CONFIG_SYS_MMC_ENV_PART 2 /* Set env partition to BOOT2 partition */
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + SZ_8M)

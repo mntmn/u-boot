@@ -1,13 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2004, 2007-2010, 2011-2012 Synopsys, Inc. All rights reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARC_ARCREGS_H
 #define _ASM_ARC_ARCREGS_H
 
 #include <asm/cache.h>
+#include <config.h>
 
 /*
  * ARC architecture has additional address space - auxiliary registers.
@@ -18,6 +18,9 @@
 
 #define ARC_AUX_IDENTITY	0x04
 #define ARC_AUX_STATUS32	0x0a
+
+/* STATUS32 Bits Positions */
+#define STATUS_AD_BIT		19	/* Enable unaligned access */
 
 /* Instruction cache related auxiliary registers */
 #define ARC_AUX_IC_IVIC		0x10
@@ -88,6 +91,16 @@
 
 /* ARCNUM [15:8] - field to identify each core in a multi-core system */
 #define CPU_ID_GET()	((read_aux_reg(ARC_AUX_IDENTITY) & 0xFF00) >> 8)
+
+static const inline int is_isa_arcv2(void)
+{
+	return IS_ENABLED(CONFIG_ISA_ARCV2);
+}
+
+static const inline int is_isa_arcompact(void)
+{
+	return IS_ENABLED(CONFIG_ISA_ARCOMPACT);
+}
 #endif /* __ASSEMBLY__ */
 
 #endif /* _ASM_ARC_ARCREGS_H */

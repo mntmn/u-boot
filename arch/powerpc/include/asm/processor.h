@@ -973,10 +973,8 @@
  * differentiated by the version number in the Communication Processor
  * Module (CPM).
  */
-#define PVR_821		0x00500000
-#define PVR_823		PVR_821
-#define PVR_850		PVR_821
-#define PVR_860		PVR_821
+#define PVR_8xx		0x00500000
+
 #define PVR_7400	0x000C0000
 
 /*
@@ -1327,7 +1325,9 @@ void ll_puts(const char *);
 /* In misc.c */
 void _nmask_and_or_msr(unsigned long nmask, unsigned long or_val);
 
+#ifndef CONFIG_CPU_MPC83XX
 int prt_83xx_rsr(void);
+#endif
 
 #endif /* ndef ASSEMBLY*/
 

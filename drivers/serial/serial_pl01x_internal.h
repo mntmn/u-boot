@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2003, 2004
  * ARM Ltd.
  * Philippe Robin, <philippe.robin@arm.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -43,7 +42,12 @@ struct pl01x_regs {
 
 int pl01x_serial_ofdata_to_platdata(struct udevice *dev);
 int pl01x_serial_probe(struct udevice *dev);
-extern const struct dm_serial_ops pl01x_serial_ops;
+
+/* Needed for external pl01x_serial_ops drivers */
+int pl01x_serial_putc(struct udevice *dev, const char ch);
+int pl01x_serial_pending(struct udevice *dev, bool input);
+int pl01x_serial_getc(struct udevice *dev);
+int pl01x_serial_setbrg(struct udevice *dev, int baudrate);
 
 struct pl01x_priv {
 	struct pl01x_regs *regs;

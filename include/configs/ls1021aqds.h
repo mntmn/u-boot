@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -85,8 +84,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 #define CONFIG_SYS_MONITOR_LEN		0x80000
 #endif
-
-#define CONFIG_NR_DRAM_BANKS		1
 
 #define CONFIG_DDR_SPD
 #define SPD_EEPROM_ADDRESS		0x51
@@ -336,7 +333,6 @@ unsigned long get_board_ddr_clk(void);
 #ifdef CONFIG_LPUART
 #define CONFIG_LPUART_32B_REG
 #else
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #ifndef CONFIG_DM_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -353,6 +349,15 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 
+/* EEPROM */
+#define CONFIG_ID_EEPROM
+#define CONFIG_SYS_I2C_EEPROM_NXID
+#define CONFIG_SYS_EEPROM_BUS_NUM		0
+#define CONFIG_SYS_I2C_EEPROM_ADDR		0x57
+#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	3
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	5
+
 /*
  * I2C bus multiplexer
  */
@@ -363,7 +368,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * MMC
  */
-#define CONFIG_FSL_ESDHC
 
 /* SPI */
 #if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
@@ -397,10 +401,8 @@ unsigned long get_board_ddr_clk(void);
 /*
  * eTSEC
  */
-#define CONFIG_TSEC_ENET
 
 #ifdef CONFIG_TSEC_ENET
-#define CONFIG_MII
 #define CONFIG_MII_DEFAULT_TSEC		3
 #define CONFIG_TSEC1			1
 #define CONFIG_TSEC1_NAME		"eTSEC1"
@@ -447,7 +449,6 @@ unsigned long get_board_ddr_clk(void);
 #endif
 
 #define CONFIG_CMDLINE_TAG
-#define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_PEN_ADDR_BIG_ENDIAN
 #define CONFIG_LAYERSCAPE_NS_ACCESS
@@ -479,8 +480,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_AUTO_COMPLETE
 
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		0x9fffffff
@@ -521,8 +520,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_ENV_SIZE			0x2000
 #define CONFIG_ENV_SECT_SIZE		0x20000 /* 128K (one sector) */
 #endif
-
-#define CONFIG_MISC_INIT_R
 
 #include <asm/fsl_secure_boot.h>
 #define CONFIG_SYS_BOOTM_LEN	(64 << 20) /* Increase max gunzip size */

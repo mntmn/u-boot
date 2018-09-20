@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006, 2010.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * mpc8313epb board configuration file
@@ -52,8 +51,6 @@
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_FSL_ELBC 1
 
-#define CONFIG_MISC_INIT_R
-
 /*
  * On-board devices
  *
@@ -72,8 +69,6 @@
 #endif
 
 #define CONFIG_SYS_CLK_FREQ	CONFIG_83XX_CLKIN
-
-#define CONFIG_BOARD_EARLY_INIT_R		/* call board_early_init_r */
 
 #define CONFIG_SYS_IMMR		0xE0000000
 
@@ -252,7 +247,6 @@
 #define CONFIG_SYS_NAND_BASE		0xE2800000
 #endif
 
-#define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITION
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
@@ -347,7 +341,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 
@@ -387,7 +380,6 @@
 /*
  * TSEC
  */
-#define CONFIG_TSEC_ENET		/* TSEC ethernet support */
 
 #define CONFIG_GMII			/* MII PHY management */
 
@@ -448,21 +440,14 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
 
-#define CONFIG_CMDLINE_EDITING 1
-#define CONFIG_AUTO_COMPLETE	/* add autocompletion support   */
-
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 
@@ -615,7 +600,7 @@
 
 #define CONFIG_NETDEV		"eth1"
 
-#define CONFIG_HOSTNAME		mpc8313erdb
+#define CONFIG_HOSTNAME		"mpc8313erdb"
 #define CONFIG_ROOTPATH		"/nfs/root/path"
 #define CONFIG_BOOTFILE		"uImage"
 				/* U-Boot image on TFTP server */

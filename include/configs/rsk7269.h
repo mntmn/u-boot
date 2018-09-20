@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas RSK2+SH7269 board
  *
  * Copyright (C) 2012 Renesas Electronics Europe Ltd.
  * Copyright (C) 2012 Phil Edworthy
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __RSK7269_H
@@ -16,7 +15,6 @@
 
 #define CONFIG_SYS_BAUDRATE_TABLE	{ CONFIG_BAUDRATE }
 
-#define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 #define CONFIG_SYS_PBSIZE	256	/* Print Buffer Size */
 
 /* Serial */
@@ -48,7 +46,6 @@
 
 /* Board Clock */
 #define CONFIG_SYS_CLK_FREQ	66125000
-#define CONFIG_SH_TMU_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CMT_CLK_DIVIDER		32	/* 8 (default), 32, 128 or 512 */
 #define CONFIG_SH_CMT_CLK_FREQ (CONFIG_SYS_CLK_FREQ / CMT_CLK_DIVIDER)

@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Alpha Project AP-SH4A-4A board
  *
  * Copyright (C) 2012 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AP_SH4A_4A_H
@@ -24,7 +23,6 @@
 #define CONFIG_BITBANGMII_MULTI
 
 /* undef to save memory	*/
-#define CONFIG_SYS_LONGHELP
 /* Monitor Command Prompt */
 /* Buffer size for Console output */
 #define CONFIG_SYS_PBSIZE		256
@@ -45,7 +43,6 @@
 #define CONFIG_SYS_MEMTEST_START (CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END	 (CONFIG_SYS_MEMTEST_START + CONFIG_SYS_SDRAM_SIZE)
 /* Enable alternate, more extensive, memory test */
-#undef  CONFIG_SYS_ALT_MEMTEST
 /* Scratch address used by the alternate memory test */
 #undef  CONFIG_SYS_MEMTEST_SCRATCH
 
@@ -103,8 +100,6 @@
 #else
 #define CONFIG_SYS_CLK_FREQ 44444444
 #endif
-#define CONFIG_SH_TMU_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
-#define CONFIG_SYS_TMU_CLK_DIV      4
 
 #endif	/* __AP_SH4A_4A_H */

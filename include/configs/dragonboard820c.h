@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Board configuration file for Dragonboard 410C
  *
  * (C) Copyright 2017 Jorge Ramirez-Ortiz <jorge.ramirez-ortiz@linaro.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIGS_DRAGONBOARD820C_H
@@ -12,10 +11,7 @@
 #include <linux/sizes.h>
 #include <asm/arch/sysmap-apq8096.h>
 
-#define CONFIG_MISC_INIT_R /* To stop autoboot */
-
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		2
 
 #define PHYS_SDRAM_SIZE			0xC0000000
 #define PHYS_SDRAM_1			0x80000000
@@ -36,7 +32,6 @@
 #define CONFIG_BOOTP_BOOTFILESIZE
 
 #ifndef CONFIG_SPL_BUILD
-#include <config_distro_defaults.h>
 #include <config_distro_bootcmd.h>
 #endif
 
@@ -57,7 +52,6 @@
 	BOOTENV
 
 #define CONFIG_ENV_SIZE			0x4000
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + SZ_8M)

@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * board/renesas/salvator-x/salvator-x.c
  *     This file is Salvator-X/Salvator-XS board support.
  *
  * Copyright (C) 2015-2017 Renesas Electronics Corporation
  * Copyright (C) 2015 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -109,7 +108,7 @@ int board_init(void)
 
 int dram_init(void)
 {
-	if (fdtdec_setup_memory_size() != 0)
+	if (fdtdec_setup_mem_size_base() != 0)
 		return -EINVAL;
 
 	return 0;

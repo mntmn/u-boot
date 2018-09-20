@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -17,8 +16,6 @@
 #define CONFIG_USE_INTERRUPT
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
-
-#define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_ARCH_MAP_SYSMEM
 
@@ -77,7 +74,6 @@
  */
 
 /* FTUART is a high speed NS 16C550A compatible UART, addr: 0x99600000 */
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_COM1		CONFIG_FTUART010_02_BASE
 #ifndef CONFIG_DM_SERIAL
@@ -86,15 +82,8 @@
 #define CONFIG_SYS_NS16550_CLK		((18432000 * 20) / 25)	/* AG101P */
 
 /*
- * SD (MMC) controller
- */
-#define CONFIG_FTSDC010_NUMBER		1
-#define CONFIG_FTSDC010_SDIO
-
-/*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 
 /*
  * Size of malloc() pool
@@ -204,8 +193,6 @@
 
 #define PHYS_SDRAM_1 \
 	(PHYS_SDRAM_0 + PHYS_SDRAM_0_SIZE)	/* SDRAM Bank #2 */
-
-#define CONFIG_NR_DRAM_BANKS	2		/* we have 2 bank of DRAM */
 
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
 #define PHYS_SDRAM_0_SIZE	0x20000000	/* 512 MB */

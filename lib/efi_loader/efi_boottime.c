@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  EFI application boot time services
  *
  *  Copyright (c) 2016 Alexander Graf
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -11,11 +10,9 @@
 #include <efi_loader.h>
 #include <environment.h>
 #include <malloc.h>
-#include <asm/global_data.h>
-#include <libfdt_env.h>
+#include <linux/libfdt_env.h>
 #include <u-boot/crc.h>
 #include <bootm.h>
-#include <inttypes.h>
 #include <watchdog.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -26,6 +23,9 @@ static efi_uintn_t efi_tpl = TPL_APPLICATION;
 /* This list contains all the EFI objects our payload has access to */
 LIST_HEAD(efi_obj_list);
 
+/* List of all events */
+LIST_HEAD(efi_events);
+
 /*
  * If we're running on nasty systems (32bit ARM booting into non-EFI Linux)
  * we need to do trickery with caches. Since we don't want to break the EFI
@@ -33,16 +33,6 @@ LIST_HEAD(efi_obj_list);
  * direct Linux EFI booting along the way - oh well).
  */
 static bool efi_is_direct_boot = true;
-
-/*
- * EFI can pass arbitrary additional "tables" containing vendor specific
- * information to the payload. One such table is the FDT table which contains
- * a pointer to a flattened device tree blob.
- *
- * In most cases we want to pass an FDT to the payload, so reserve one slot of
- * config table space for it. The pointer gets populated by do_bootefi_exec().
- */
-static struct efi_configuration_table __efi_runtime_data efi_conf_table[2];
 
 #ifdef CONFIG_ARM
 /*
@@ -56,9 +46,27 @@ static volatile void *efi_gd, *app_gd;
 
 static int entry_count;
 static int nesting_level;
+/* GUID of the device tree table */
+const efi_guid_t efi_guid_fdt = EFI_FDT_GUID;
 /* GUID of the EFI_DRIVER_BINDING_PROTOCOL */
 const efi_guid_t efi_guid_driver_binding_protocol =
 			EFI_DRIVER_BINDING_PROTOCOL_GUID;
+
+/* event group ExitBootServices() invoked */
+const efi_guid_t efi_guid_event_group_exit_boot_services =
+			EFI_EVENT_GROUP_EXIT_BOOT_SERVICES;
+/* event group SetVirtualAddressMap() invoked */
+const efi_guid_t efi_guid_event_group_virtual_address_change =
+			EFI_EVENT_GROUP_VIRTUAL_ADDRESS_CHANGE;
+/* event group memory map changed */
+const efi_guid_t efi_guid_event_group_memory_map_change =
+			EFI_EVENT_GROUP_MEMORY_MAP_CHANGE;
+/* event group boot manager about to boot */
+const efi_guid_t efi_guid_event_group_ready_to_boot =
+			EFI_EVENT_GROUP_READY_TO_BOOT;
+/* event group ResetSystem() invoked (before ExitBootServices) */
+const efi_guid_t efi_guid_event_group_reset_system =
+			EFI_EVENT_GROUP_RESET_SYSTEM;
 
 static efi_status_t EFIAPI efi_disconnect_controller(
 					efi_handle_t controller_handle,
@@ -96,9 +104,9 @@ void efi_save_gd(void)
 }
 
 /*
- * Special case handler for error/abort that just forces things back
- * to u-boot world so we can dump out an abort msg, without any care
- * about returning back to UEFI world.
+ * Special case handler for error/abort that just forces things back to u-boot
+ * world so we can dump out an abort msg, without any care about returning back
+ * to UEFI world.
  */
 void efi_restore_gd(void)
 {
@@ -110,17 +118,21 @@ void efi_restore_gd(void)
 #endif
 }
 
-/*
- * Return a string for indenting with two spaces per level. A maximum of ten
- * indent levels is supported. Higher indent levels will be truncated.
+/**
+ * indent_string() - returns a string for indenting with two spaces per level
+ * @level: indent level
  *
- * @level	indent level
- * @return	indent string
+ * A maximum of ten indent levels is supported. Higher indent levels will be
+ * truncated.
+ *
+ * Return: A string for indenting with two spaces per level is
+ *         returned.
  */
 static const char *indent_string(int level)
 {
 	const char *indent = "                    ";
 	const int max = strlen(indent);
+
 	level = min(max, level * 2);
 	return &indent[max - level];
 }
@@ -140,21 +152,21 @@ const char *__efi_nesting_dec(void)
 	return indent_string(--nesting_level);
 }
 
-/*
- * Queue an EFI event.
+/**
+ * efi_queue_event() - queue an EFI event
+ * @event:     event to signal
+ * @check_tpl: check the TPL level
  *
  * This function queues the notification function of the event for future
  * execution.
  *
- * The notification function is called if the task priority level of the
- * event is higher than the current task priority level.
+ * The notification function is called if the task priority level of the event
+ * is higher than the current task priority level.
  *
  * For the SignalEvent service see efi_signal_event_ext.
  *
- * @event	event to signal
- * @check_tpl	check the TPL level
  */
-void efi_signal_event(struct efi_event *event, bool check_tpl)
+static void efi_queue_event(struct efi_event *event, bool check_tpl)
 {
 	if (event->notify_function) {
 		event->is_queued = true;
@@ -167,15 +179,78 @@ void efi_signal_event(struct efi_event *event, bool check_tpl)
 	event->is_queued = false;
 }
 
-/*
- * Raise the task priority level.
+/**
+ * is_valid_tpl() - check if the task priority level is valid
+ *
+ * @tpl:		TPL level to check
+ * ReturnValue:		status code
+ */
+efi_status_t is_valid_tpl(efi_uintn_t tpl)
+{
+	switch (tpl) {
+	case TPL_APPLICATION:
+	case TPL_CALLBACK:
+	case TPL_NOTIFY:
+	case TPL_HIGH_LEVEL:
+		return EFI_SUCCESS;
+	default:
+		return EFI_INVALID_PARAMETER;
+	}
+}
+
+/**
+ * efi_signal_event() - signal an EFI event
+ * @event:     event to signal
+ * @check_tpl: check the TPL level
+ *
+ * This function signals an event. If the event belongs to an event group all
+ * events of the group are signaled. If they are of type EVT_NOTIFY_SIGNAL
+ * their notification function is queued.
+ *
+ * For the SignalEvent service see efi_signal_event_ext.
+ */
+void efi_signal_event(struct efi_event *event, bool check_tpl)
+{
+	if (event->group) {
+		struct efi_event *evt;
+
+		/*
+		 * The signaled state has to set before executing any
+		 * notification function
+		 */
+		list_for_each_entry(evt, &efi_events, link) {
+			if (!evt->group || guidcmp(evt->group, event->group))
+				continue;
+			if (evt->is_signaled)
+				continue;
+			evt->is_signaled = true;
+			if (evt->type & EVT_NOTIFY_SIGNAL &&
+			    evt->notify_function)
+				evt->is_queued = true;
+		}
+		list_for_each_entry(evt, &efi_events, link) {
+			if (!evt->group || guidcmp(evt->group, event->group))
+				continue;
+			if (evt->is_queued)
+				efi_queue_event(evt, check_tpl);
+		}
+	} else if (!event->is_signaled) {
+		event->is_signaled = true;
+		if (event->type & EVT_NOTIFY_SIGNAL)
+			efi_queue_event(event, check_tpl);
+	}
+}
+
+/**
+ * efi_raise_tpl() - raise the task priority level
+ * @new_tpl: new value of the task priority level
  *
  * This function implements the RaiseTpl service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @new_tpl	new value of the task priority level
- * @return	old value of the task priority level
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: old value of the task priority level
  */
 static unsigned long EFIAPI efi_raise_tpl(efi_uintn_t new_tpl)
 {
@@ -193,14 +268,14 @@ static unsigned long EFIAPI efi_raise_tpl(efi_uintn_t new_tpl)
 	return old_tpl;
 }
 
-/*
- * Lower the task priority level.
+/**
+ * efi_restore_tpl() - lower the task priority level
+ * @old_tpl: value of the task priority level to be restored
  *
  * This function implements the RestoreTpl service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @old_tpl	value of the task priority level to be restored
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
  */
 static void EFIAPI efi_restore_tpl(efi_uintn_t old_tpl)
 {
@@ -212,21 +287,27 @@ static void EFIAPI efi_restore_tpl(efi_uintn_t old_tpl)
 	if (efi_tpl > TPL_HIGH_LEVEL)
 		efi_tpl = TPL_HIGH_LEVEL;
 
+	/*
+	 * Lowering the TPL may have made queued events eligible for execution.
+	 */
+	efi_timer_check();
+
 	EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Allocate memory pages.
+/**
+ * efi_allocate_pages_ext() - allocate memory pages
+ * @type:        type of allocation to be performed
+ * @memory_type: usage type of the allocated memory
+ * @pages:       number of pages to be allocated
+ * @memory:      allocated memory
  *
  * This function implements the AllocatePages service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @type		type of allocation to be performed
- * @memory_type		usage type of the allocated memory
- * @pages		number of pages to be allocated
- * @memory		allocated memory
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_allocate_pages_ext(int type, int memory_type,
 						  efi_uintn_t pages,
@@ -239,41 +320,43 @@ static efi_status_t EFIAPI efi_allocate_pages_ext(int type, int memory_type,
 	return EFI_EXIT(r);
 }
 
-/*
- * Free memory pages.
+/**
+ * efi_free_pages_ext() - Free memory pages.
+ * @memory: start of the memory area to be freed
+ * @pages:  number of pages to be freed
  *
  * This function implements the FreePages service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @memory	start of the memory area to be freed
- * @pages	number of pages to be freed
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_free_pages_ext(uint64_t memory,
 					      efi_uintn_t pages)
 {
 	efi_status_t r;
 
-	EFI_ENTRY("%"PRIx64", 0x%zx", memory, pages);
+	EFI_ENTRY("%llx, 0x%zx", memory, pages);
 	r = efi_free_pages(memory, pages);
 	return EFI_EXIT(r);
 }
 
-/*
- * Get map describing memory usage.
+/**
+ * efi_get_memory_map_ext() - get map describing memory usage
+ * @memory_map_size:    on entry the size, in bytes, of the memory map buffer,
+ *                      on exit the size of the copied memory map
+ * @memory_map:         buffer to which the memory map is written
+ * @map_key:            key for the memory map
+ * @descriptor_size:    size of an individual memory descriptor
+ * @descriptor_version: version number of the memory descriptor structure
  *
  * This function implements the GetMemoryMap service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @memory_map_size	on entry the size, in bytes, of the memory map buffer,
- *			on exit the size of the copied memory map
- * @memory_map		buffer to which the memory map is written
- * @map_key		key for the memory map
- * @descriptor_size	size of an individual memory descriptor
- * @descriptor_version	version number of the memory descriptor structure
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_get_memory_map_ext(
 					efi_uintn_t *memory_map_size,
@@ -291,17 +374,18 @@ static efi_status_t EFIAPI efi_get_memory_map_ext(
 	return EFI_EXIT(r);
 }
 
-/*
- * Allocate memory from pool.
+/**
+ * efi_allocate_pool_ext() - allocate memory from pool
+ * @pool_type: type of the pool from which memory is to be allocated
+ * @size:      number of bytes to be allocated
+ * @buffer:    allocated memory
  *
  * This function implements the AllocatePool service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @pool_type	type of the pool from which memory is to be allocated
- * @size	number of bytes to be allocated
- * @buffer	allocated memory
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_allocate_pool_ext(int pool_type,
 						 efi_uintn_t size,
@@ -314,15 +398,16 @@ static efi_status_t EFIAPI efi_allocate_pool_ext(int pool_type,
 	return EFI_EXIT(r);
 }
 
-/*
- * Free memory from pool.
+/**
+ * efi_free_pool_ext() - free memory from pool
+ * @buffer: start of memory to be freed
  *
  * This function implements the FreePool service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @buffer	start of memory to be freed
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_free_pool_ext(void *buffer)
 {
@@ -333,13 +418,11 @@ static efi_status_t EFIAPI efi_free_pool_ext(void *buffer)
 	return EFI_EXIT(r);
 }
 
-/*
- * Add a new object to the object list.
+/**
+ * efi_add_handle() - add a new object to the object list
+ * @obj: object to be added
  *
- * The protocols list is initialized.
- * The object handle is set.
- *
- * @obj	object to be added
+ * The protocols list is initialized. The object handle is set.
  */
 void efi_add_handle(struct efi_object *obj)
 {
@@ -350,34 +433,33 @@ void efi_add_handle(struct efi_object *obj)
 	list_add_tail(&obj->link, &efi_obj_list);
 }
 
-/*
- * Create handle.
+/**
+ * efi_create_handle() - create handle
+ * @handle: new handle
  *
- * @handle	new handle
- * @return	status code
+ * Return: status code
  */
 efi_status_t efi_create_handle(efi_handle_t *handle)
 {
 	struct efi_object *obj;
-	efi_status_t r;
 
-	r = efi_allocate_pool(EFI_ALLOCATE_ANY_PAGES,
-			      sizeof(struct efi_object),
-			      (void **)&obj);
-	if (r != EFI_SUCCESS)
-		return r;
+	obj = calloc(1, sizeof(struct efi_object));
+	if (!obj)
+		return EFI_OUT_OF_RESOURCES;
+
 	efi_add_handle(obj);
 	*handle = obj->handle;
-	return r;
+
+	return EFI_SUCCESS;
 }
 
-/*
- * Find a protocol on a handle.
+/**
+ * efi_search_protocol() - find a protocol on a handle.
+ * @handle:        handle
+ * @protocol_guid: GUID of the protocol
+ * @handler:       reference to the protocol
  *
- * @handle		handle
- * @protocol_guid	GUID of the protocol
- * @handler		reference to the protocol
- * @return		status code
+ * Return: status code
  */
 efi_status_t efi_search_protocol(const efi_handle_t handle,
 				 const efi_guid_t *protocol_guid,
@@ -404,13 +486,13 @@ efi_status_t efi_search_protocol(const efi_handle_t handle,
 	return EFI_NOT_FOUND;
 }
 
-/*
- * Delete protocol from a handle.
+/**
+ * efi_remove_protocol() - delete protocol from a handle
+ * @handle:             handle from which the protocol shall be deleted
+ * @protocol:           GUID of the protocol to be deleted
+ * @protocol_interface: interface of the protocol implementation
  *
- * @handle			handle from which the protocol shall be deleted
- * @protocol			GUID of the protocol to be deleted
- * @protocol_interface		interface of the protocol implementation
- * @return			status code
+ * Return: status code
  */
 efi_status_t efi_remove_protocol(const efi_handle_t handle,
 				 const efi_guid_t *protocol,
@@ -424,16 +506,18 @@ efi_status_t efi_remove_protocol(const efi_handle_t handle,
 		return ret;
 	if (guidcmp(handler->guid, protocol))
 		return EFI_INVALID_PARAMETER;
+	if (handler->protocol_interface != protocol_interface)
+		return EFI_INVALID_PARAMETER;
 	list_del(&handler->link);
 	free(handler);
 	return EFI_SUCCESS;
 }
 
-/*
- * Delete all protocols from a handle.
+/**
+ * efi_remove_all_protocols() - delete all protocols from a handle
+ * @handle: handle from which the protocols shall be deleted
  *
- * @handle	handle from which the protocols shall be deleted
- * @return	status code
+ * Return: status code
  */
 efi_status_t efi_remove_all_protocols(const efi_handle_t handle)
 {
@@ -455,10 +539,10 @@ efi_status_t efi_remove_all_protocols(const efi_handle_t handle)
 	return EFI_SUCCESS;
 }
 
-/*
- * Delete handle.
+/**
+ * efi_delete_handle() - delete handle
  *
- * @handle	handle to delete
+ * @obj: handle to delete
  */
 void efi_delete_handle(struct efi_object *obj)
 {
@@ -469,77 +553,103 @@ void efi_delete_handle(struct efi_object *obj)
 	free(obj);
 }
 
-/*
- * Our event capabilities are very limited. Only a small limited
- * number of events is allowed to coexist.
+/**
+ * efi_is_event() - check if a pointer is a valid event
+ * @event: pointer to check
+ *
+ * Return: status code
  */
-static struct efi_event efi_events[16];
+static efi_status_t efi_is_event(const struct efi_event *event)
+{
+	const struct efi_event *evt;
 
-/*
- * Create an event.
+	if (!event)
+		return EFI_INVALID_PARAMETER;
+	list_for_each_entry(evt, &efi_events, link) {
+		if (evt == event)
+			return EFI_SUCCESS;
+	}
+	return EFI_INVALID_PARAMETER;
+}
+
+/**
+ * efi_create_event() - create an event
+ * @type:            type of the event to create
+ * @notify_tpl:      task priority level of the event
+ * @notify_function: notification function of the event
+ * @notify_context:  pointer passed to the notification function
+ * @group:           event group
+ * @event:           created event
  *
  * This function is used inside U-Boot code to create an event.
  *
  * For the API function implementing the CreateEvent service see
  * efi_create_event_ext.
  *
- * @type		type of the event to create
- * @notify_tpl		task priority level of the event
- * @notify_function	notification function of the event
- * @notify_context	pointer passed to the notification function
- * @event		created event
- * @return		status code
+ * Return: status code
  */
 efi_status_t efi_create_event(uint32_t type, efi_uintn_t notify_tpl,
 			      void (EFIAPI *notify_function) (
 					struct efi_event *event,
 					void *context),
-			      void *notify_context, struct efi_event **event)
+			      void *notify_context, efi_guid_t *group,
+			      struct efi_event **event)
 {
-	int i;
+	struct efi_event *evt;
 
 	if (event == NULL)
 		return EFI_INVALID_PARAMETER;
 
-	if ((type & EVT_NOTIFY_SIGNAL) && (type & EVT_NOTIFY_WAIT))
+	switch (type) {
+	case 0:
+	case EVT_TIMER:
+	case EVT_NOTIFY_SIGNAL:
+	case EVT_TIMER | EVT_NOTIFY_SIGNAL:
+	case EVT_NOTIFY_WAIT:
+	case EVT_TIMER | EVT_NOTIFY_WAIT:
+	case EVT_SIGNAL_EXIT_BOOT_SERVICES:
+	case EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE:
+		break;
+	default:
 		return EFI_INVALID_PARAMETER;
-
-	if ((type & (EVT_NOTIFY_SIGNAL|EVT_NOTIFY_WAIT)) &&
-	    notify_function == NULL)
-		return EFI_INVALID_PARAMETER;
-
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (efi_events[i].type)
-			continue;
-		efi_events[i].type = type;
-		efi_events[i].notify_tpl = notify_tpl;
-		efi_events[i].notify_function = notify_function;
-		efi_events[i].notify_context = notify_context;
-		/* Disable timers on bootup */
-		efi_events[i].trigger_next = -1ULL;
-		efi_events[i].is_queued = false;
-		efi_events[i].is_signaled = false;
-		*event = &efi_events[i];
-		return EFI_SUCCESS;
 	}
-	return EFI_OUT_OF_RESOURCES;
+
+	if ((type & (EVT_NOTIFY_WAIT | EVT_NOTIFY_SIGNAL)) &&
+	    (is_valid_tpl(notify_tpl) != EFI_SUCCESS))
+		return EFI_INVALID_PARAMETER;
+
+	evt = calloc(1, sizeof(struct efi_event));
+	if (!evt)
+		return EFI_OUT_OF_RESOURCES;
+	evt->type = type;
+	evt->notify_tpl = notify_tpl;
+	evt->notify_function = notify_function;
+	evt->notify_context = notify_context;
+	evt->group = group;
+	/* Disable timers on bootup */
+	evt->trigger_next = -1ULL;
+	evt->is_queued = false;
+	evt->is_signaled = false;
+	list_add_tail(&evt->link, &efi_events);
+	*event = evt;
+	return EFI_SUCCESS;
 }
 
 /*
- * Create an event in a group.
+ * efi_create_event_ex() - create an event in a group
+ * @type:            type of the event to create
+ * @notify_tpl:      task priority level of the event
+ * @notify_function: notification function of the event
+ * @notify_context:  pointer passed to the notification function
+ * @event:           created event
+ * @event_group:     event group
  *
  * This function implements the CreateEventEx service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
- * TODO: Support event groups
  *
- * @type		type of the event to create
- * @notify_tpl		task priority level of the event
- * @notify_function	notification function of the event
- * @notify_context	pointer passed to the notification function
- * @event		created event
- * @event_group		event group
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 efi_status_t EFIAPI efi_create_event_ex(uint32_t type, efi_uintn_t notify_tpl,
 					void (EFIAPI *notify_function) (
@@ -551,25 +661,24 @@ efi_status_t EFIAPI efi_create_event_ex(uint32_t type, efi_uintn_t notify_tpl,
 {
 	EFI_ENTRY("%d, 0x%zx, %p, %p, %pUl", type, notify_tpl, notify_function,
 		  notify_context, event_group);
-	if (event_group)
-		return EFI_EXIT(EFI_UNSUPPORTED);
 	return EFI_EXIT(efi_create_event(type, notify_tpl, notify_function,
-					 notify_context, event));
+					 notify_context, event_group, event));
 }
 
-/*
- * Create an event.
+/**
+ * efi_create_event_ext() - create an event
+ * @type:            type of the event to create
+ * @notify_tpl:      task priority level of the event
+ * @notify_function: notification function of the event
+ * @notify_context:  pointer passed to the notification function
+ * @event:           created event
  *
  * This function implements the CreateEvent service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @type		type of the event to create
- * @notify_tpl		task priority level of the event
- * @notify_function	notification function of the event
- * @notify_context	pointer passed to the notification function
- * @event		created event
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_create_event_ext(
 			uint32_t type, efi_uintn_t notify_tpl,
@@ -581,11 +690,12 @@ static efi_status_t EFIAPI efi_create_event_ext(
 	EFI_ENTRY("%d, 0x%zx, %p, %p", type, notify_tpl, notify_function,
 		  notify_context);
 	return EFI_EXIT(efi_create_event(type, notify_tpl, notify_function,
-					 notify_context, event));
+					 notify_context, NULL, event));
 }
 
-
-/*
+/**
+ * efi_timer_check() - check if a timer event has occurred
+ *
  * Check if a timer event has occurred or a queued notification function should
  * be called.
  *
@@ -594,49 +704,47 @@ static efi_status_t EFIAPI efi_create_event_ext(
  */
 void efi_timer_check(void)
 {
-	int i;
+	struct efi_event *evt;
 	u64 now = timer_get_us();
 
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (!efi_events[i].type)
+	list_for_each_entry(evt, &efi_events, link) {
+		if (evt->is_queued)
+			efi_queue_event(evt, true);
+		if (!(evt->type & EVT_TIMER) || now < evt->trigger_next)
 			continue;
-		if (efi_events[i].is_queued)
-			efi_signal_event(&efi_events[i], true);
-		if (!(efi_events[i].type & EVT_TIMER) ||
-		    now < efi_events[i].trigger_next)
-			continue;
-		switch (efi_events[i].trigger_type) {
+		switch (evt->trigger_type) {
 		case EFI_TIMER_RELATIVE:
-			efi_events[i].trigger_type = EFI_TIMER_STOP;
+			evt->trigger_type = EFI_TIMER_STOP;
 			break;
 		case EFI_TIMER_PERIODIC:
-			efi_events[i].trigger_next +=
-				efi_events[i].trigger_time;
+			evt->trigger_next += evt->trigger_time;
 			break;
 		default:
 			continue;
 		}
-		efi_events[i].is_signaled = true;
-		efi_signal_event(&efi_events[i], true);
+		evt->is_signaled = false;
+		efi_signal_event(evt, true);
 	}
 	WATCHDOG_RESET();
 }
 
-/*
- * Set the trigger time for a timer event or stop the event.
+/**
+ * efi_set_timer() - set the trigger time for a timer event or stop the event
+ * @event:        event for which the timer is set
+ * @type:         type of the timer
+ * @trigger_time: trigger period in multiples of 100ns
  *
  * This is the function for internal usage in U-Boot. For the API function
  * implementing the SetTimer service see efi_set_timer_ext.
  *
- * @event		event for which the timer is set
- * @type		type of the timer
- * @trigger_time	trigger period in multiples of 100ns
- * @return		status code
+ * Return: status code
  */
 efi_status_t efi_set_timer(struct efi_event *event, enum efi_timer_delay type,
 			   uint64_t trigger_time)
 {
-	int i;
+	/* Check that the event is valid */
+	if (efi_is_event(event) != EFI_SUCCESS || !(event->type & EVT_TIMER))
+		return EFI_INVALID_PARAMETER;
 
 	/*
 	 * The parameter defines a multiple of 100ns.
@@ -644,69 +752,64 @@ efi_status_t efi_set_timer(struct efi_event *event, enum efi_timer_delay type,
 	 */
 	do_div(trigger_time, 10);
 
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (event != &efi_events[i])
-			continue;
-
-		if (!(event->type & EVT_TIMER))
-			break;
-		switch (type) {
-		case EFI_TIMER_STOP:
-			event->trigger_next = -1ULL;
-			break;
-		case EFI_TIMER_PERIODIC:
-		case EFI_TIMER_RELATIVE:
-			event->trigger_next =
-				timer_get_us() + trigger_time;
-			break;
-		default:
-			return EFI_INVALID_PARAMETER;
-		}
-		event->trigger_type = type;
-		event->trigger_time = trigger_time;
-		event->is_signaled = false;
-		return EFI_SUCCESS;
+	switch (type) {
+	case EFI_TIMER_STOP:
+		event->trigger_next = -1ULL;
+		break;
+	case EFI_TIMER_PERIODIC:
+	case EFI_TIMER_RELATIVE:
+		event->trigger_next = timer_get_us() + trigger_time;
+		break;
+	default:
+		return EFI_INVALID_PARAMETER;
 	}
-	return EFI_INVALID_PARAMETER;
+	event->trigger_type = type;
+	event->trigger_time = trigger_time;
+	event->is_signaled = false;
+	return EFI_SUCCESS;
 }
 
-/*
- * Set the trigger time for a timer event or stop the event.
+/**
+ * efi_set_timer_ext() - Set the trigger time for a timer event or stop the
+ *                       event
+ * @event:        event for which the timer is set
+ * @type:         type of the timer
+ * @trigger_time: trigger period in multiples of 100ns
  *
  * This function implements the SetTimer service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @event		event for which the timer is set
- * @type		type of the timer
- * @trigger_time	trigger period in multiples of 100ns
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_set_timer_ext(struct efi_event *event,
 					     enum efi_timer_delay type,
 					     uint64_t trigger_time)
 {
-	EFI_ENTRY("%p, %d, %"PRIx64, event, type, trigger_time);
+	EFI_ENTRY("%p, %d, %llx", event, type, trigger_time);
 	return EFI_EXIT(efi_set_timer(event, type, trigger_time));
 }
 
-/*
- * Wait for events to be signaled.
+/**
+ * efi_wait_for_event() - wait for events to be signaled
+ * @num_events: number of events to be waited for
+ * @event:      events to be waited for
+ * @index:      index of the event that was signaled
  *
  * This function implements the WaitForEvent service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @num_events	number of events to be waited for
- * @events	events to be waited for
- * @index	index of the event that was signaled
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_wait_for_event(efi_uintn_t num_events,
 					      struct efi_event **event,
 					      efi_uintn_t *index)
 {
-	int i, j;
+	int i;
 
 	EFI_ENTRY("%zd, %p, %p", num_events, event, index);
 
@@ -717,16 +820,12 @@ static efi_status_t EFIAPI efi_wait_for_event(efi_uintn_t num_events,
 	if (efi_tpl != TPL_APPLICATION)
 		return EFI_EXIT(EFI_UNSUPPORTED);
 	for (i = 0; i < num_events; ++i) {
-		for (j = 0; j < ARRAY_SIZE(efi_events); ++j) {
-			if (event[i] == &efi_events[j])
-				goto known_event;
-		}
-		return EFI_EXIT(EFI_INVALID_PARAMETER);
-known_event:
+		if (efi_is_event(event[i]) != EFI_SUCCESS)
+			return EFI_EXIT(EFI_INVALID_PARAMETER);
 		if (!event[i]->type || event[i]->type & EVT_NOTIFY_SIGNAL)
 			return EFI_EXIT(EFI_INVALID_PARAMETER);
 		if (!event[i]->is_signaled)
-			efi_signal_event(event[i], true);
+			efi_queue_event(event[i], true);
 	}
 
 	/* Wait for signal */
@@ -751,101 +850,85 @@ out:
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Signal an EFI event.
+/**
+ * efi_signal_event_ext() - signal an EFI event
+ * @event: event to signal
  *
  * This function implements the SignalEvent service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
  *
  * This functions sets the signaled state of the event and queues the
  * notification function for execution.
  *
- * @event	event to signal
- * @return	status code
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_signal_event_ext(struct efi_event *event)
 {
-	int i;
-
 	EFI_ENTRY("%p", event);
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (event != &efi_events[i])
-			continue;
-		if (event->is_signaled)
-			break;
-		event->is_signaled = true;
-		if (event->type & EVT_NOTIFY_SIGNAL)
-			efi_signal_event(event, true);
-		break;
-	}
+	if (efi_is_event(event) != EFI_SUCCESS)
+		return EFI_EXIT(EFI_INVALID_PARAMETER);
+	efi_signal_event(event, true);
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Close an EFI event.
+/**
+ * efi_close_event() - close an EFI event
+ * @event: event to close
  *
  * This function implements the CloseEvent service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @event	event to close
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_close_event(struct efi_event *event)
 {
-	int i;
-
 	EFI_ENTRY("%p", event);
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (event == &efi_events[i]) {
-			event->type = 0;
-			event->trigger_next = -1ULL;
-			event->is_queued = false;
-			event->is_signaled = false;
-			return EFI_EXIT(EFI_SUCCESS);
-		}
-	}
-	return EFI_EXIT(EFI_INVALID_PARAMETER);
+	if (efi_is_event(event) != EFI_SUCCESS)
+		return EFI_EXIT(EFI_INVALID_PARAMETER);
+	list_del(&event->link);
+	free(event);
+	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Check if an event is signaled.
+/**
+ * efi_check_event() - check if an event is signaled
+ * @event: event to check
  *
  * This function implements the CheckEvent service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * If an event is not signaled yet the notification function is queued.
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
  *
- * @event	event to check
- * @return	status code
+ * If an event is not signaled yet, the notification function is queued. The
+ * signaled state is cleared.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_check_event(struct efi_event *event)
 {
-	int i;
-
 	EFI_ENTRY("%p", event);
 	efi_timer_check();
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (event != &efi_events[i])
-			continue;
-		if (!event->type || event->type & EVT_NOTIFY_SIGNAL)
-			break;
-		if (!event->is_signaled)
-			efi_signal_event(event, true);
-		if (event->is_signaled)
-			return EFI_EXIT(EFI_SUCCESS);
-		return EFI_EXIT(EFI_NOT_READY);
+	if (efi_is_event(event) != EFI_SUCCESS ||
+	    event->type & EVT_NOTIFY_SIGNAL)
+		return EFI_EXIT(EFI_INVALID_PARAMETER);
+	if (!event->is_signaled)
+		efi_queue_event(event, true);
+	if (event->is_signaled) {
+		event->is_signaled = false;
+		return EFI_EXIT(EFI_SUCCESS);
 	}
-	return EFI_EXIT(EFI_INVALID_PARAMETER);
+	return EFI_EXIT(EFI_NOT_READY);
 }
 
-/*
- * Find the internal EFI object for a handle.
+/**
+ * efi_search_obj() - find the internal EFI object for a handle
+ * @handle: handle to find
  *
- * @handle	handle to find
- * @return	EFI object
+ * Return: EFI object
  */
 struct efi_object *efi_search_obj(const efi_handle_t handle)
 {
@@ -859,11 +942,12 @@ struct efi_object *efi_search_obj(const efi_handle_t handle)
 	return NULL;
 }
 
-/*
- * Create open protocol info entry and add it to a protocol.
+/**
+ * efi_open_protocol_info_entry() - create open protocol info entry and add it
+ *                                  to a protocol
+ * @handler: handler of a protocol
  *
- * @handler	handler of a protocol
- * @return	open protocol info entry
+ * Return: open protocol info entry
  */
 static struct efi_open_protocol_info_entry *efi_create_open_info(
 			struct efi_handler *handler)
@@ -879,11 +963,11 @@ static struct efi_open_protocol_info_entry *efi_create_open_info(
 	return &item->info;
 }
 
-/*
- * Remove an open protocol info entry from a protocol.
+/**
+ * efi_delete_open_info() - remove an open protocol info entry from a protocol
+ * @item: open protocol info entry to delete
  *
- * @handler	handler of a protocol
- * @return	status code
+ * Return: status code
  */
 static efi_status_t efi_delete_open_info(
 			struct efi_open_protocol_info_item *item)
@@ -893,13 +977,13 @@ static efi_status_t efi_delete_open_info(
 	return EFI_SUCCESS;
 }
 
-/*
- * Install new protocol on a handle.
+/**
+ * efi_add_protocol() - install new protocol on a handle
+ * @handle:             handle on which the protocol shall be installed
+ * @protocol:           GUID of the protocol to be installed
+ * @protocol_interface: interface of the protocol implementation
  *
- * @handle			handle on which the protocol shall be installed
- * @protocol			GUID of the protocol to be installed
- * @protocol_interface		interface of the protocol implementation
- * @return			status code
+ * Return: status code
  */
 efi_status_t efi_add_protocol(const efi_handle_t handle,
 			      const efi_guid_t *protocol,
@@ -927,19 +1011,20 @@ efi_status_t efi_add_protocol(const efi_handle_t handle,
 	return EFI_SUCCESS;
 }
 
-/*
- * Install protocol interface.
+/**
+ * efi_install_protocol_interface() - install protocol interface
+ * @handle:                  handle on which the protocol shall be installed
+ * @protocol:                GUID of the protocol to be installed
+ * @protocol_interface_type: type of the interface to be installed,
+ *                           always EFI_NATIVE_INTERFACE
+ * @protocol_interface:      interface of the protocol implementation
  *
  * This function implements the InstallProtocolInterface service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle			handle on which the protocol shall be installed
- * @protocol			GUID of the protocol to be installed
- * @protocol_interface_type	type of the interface to be installed,
- *				always EFI_NATIVE_INTERFACE
- * @protocol_interface		interface of the protocol implementation
- * @return			status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_install_protocol_interface(
 			void **handle, const efi_guid_t *protocol,
@@ -973,38 +1058,16 @@ out:
 	return EFI_EXIT(r);
 }
 
-/*
- * Reinstall protocol interface.
+/**
+ * efi_get_drivers() - get all drivers associated to a controller
+ * @efiobj:               handle of the controller
+ * @protocol:             protocol guid (optional)
+ * @number_of_drivers:    number of child controllers
+ * @driver_handle_buffer: handles of the the drivers
  *
- * This function implements the ReinstallProtocolInterface service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
- *
- * @handle			handle on which the protocol shall be
- *				reinstalled
- * @protocol			GUID of the protocol to be installed
- * @old_interface		interface to be removed
- * @new_interface		interface to be installed
- * @return			status code
- */
-static efi_status_t EFIAPI efi_reinstall_protocol_interface(
-			efi_handle_t handle, const efi_guid_t *protocol,
-			void *old_interface, void *new_interface)
-{
-	EFI_ENTRY("%p, %pUl, %p, %p", handle, protocol, old_interface,
-		  new_interface);
-	return EFI_EXIT(EFI_ACCESS_DENIED);
-}
-
-/*
- * Get all drivers associated to a controller.
  * The allocated buffer has to be freed with free().
  *
- * @efiobj			handle of the controller
- * @protocol			protocol guid (optional)
- * @number_of_drivers		number of child controllers
- * @driver_handle_buffer	handles of the the drivers
- * @return			status code
+ * Return: status code
  */
 static efi_status_t efi_get_drivers(struct efi_object *efiobj,
 				    const efi_guid_t *protocol,
@@ -1060,17 +1123,18 @@ static efi_status_t efi_get_drivers(struct efi_object *efiobj,
 	return EFI_SUCCESS;
 }
 
-/*
- * Disconnect all drivers from a controller.
+/**
+ * efi_disconnect_all_drivers() - disconnect all drivers from a controller
+ * @efiobj:       handle of the controller
+ * @protocol:     protocol guid (optional)
+ * @child_handle: handle of the child to destroy
  *
  * This function implements the DisconnectController service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @efiobj		handle of the controller
- * @protocol		protocol guid (optional)
- * @child_handle	handle of the child to destroy
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t efi_disconnect_all_drivers(
 				struct efi_object *efiobj,
@@ -1099,17 +1163,18 @@ static efi_status_t efi_disconnect_all_drivers(
 	return ret;
 }
 
-/*
- * Uninstall protocol interface.
+/**
+ * efi_uninstall_protocol_interface() - uninstall protocol interface
+ * @handle:             handle from which the protocol shall be removed
+ * @protocol:           GUID of the protocol to be removed
+ * @protocol_interface: interface to be removed
  *
  * This function implements the UninstallProtocolInterface service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle			handle from which the protocol shall be removed
- * @protocol			GUID of the protocol to be removed
- * @protocol_interface		interface to be removed
- * @return			status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_uninstall_protocol_interface(
 				efi_handle_t handle, const efi_guid_t *protocol,
@@ -1156,18 +1221,18 @@ out:
 	return EFI_EXIT(r);
 }
 
-/*
- * Register an event for notification when a protocol is installed.
+/**
+ * efi_register_protocol_notify() - register an event for notification when a
+ *                                  protocol is installed.
+ * @protocol:     GUID of the protocol whose installation shall be notified
+ * @event:        event to be signaled upon installation of the protocol
+ * @registration: key for retrieving the registration information
  *
  * This function implements the RegisterProtocolNotify service.
  * See the Unified Extensible Firmware Interface (UEFI) specification
  * for details.
  *
- * @protocol		GUID of the protocol whose installation shall be
- *			notified
- * @event		event to be signaled upon installation of the protocol
- * @registration	key for retrieving the registration information
- * @return		status code
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_register_protocol_notify(
 						const efi_guid_t *protocol,
@@ -1178,16 +1243,16 @@ static efi_status_t EFIAPI efi_register_protocol_notify(
 	return EFI_EXIT(EFI_OUT_OF_RESOURCES);
 }
 
-/*
- * Determine if an EFI handle implements a protocol.
+/**
+ * efi_search() - determine if an EFI handle implements a protocol
+ * @search_type: selection criterion
+ * @protocol:    GUID of the protocol
+ * @search_key:  registration key
+ * @efiobj:      handle
  *
  * See the documentation of the LocateHandle service in the UEFI specification.
  *
- * @search_type		selection criterion
- * @protocol		GUID of the protocol
- * @search_key		registration key
- * @efiobj		handle
- * @return		0 if the handle implements the protocol
+ * Return: 0 if the handle implements the protocol
  */
 static int efi_search(enum efi_locate_search_type search_type,
 		      const efi_guid_t *protocol, void *search_key,
@@ -1210,18 +1275,18 @@ static int efi_search(enum efi_locate_search_type search_type,
 	}
 }
 
-/*
- * Locate handles implementing a protocol.
+/**
+ * efi_locate_handle() - locate handles implementing a protocol
+ * @search_type: selection criterion
+ * @protocol:    GUID of the protocol
+ * @search_key: registration key
+ * @buffer_size: size of the buffer to receive the handles in bytes
+ * @buffer:      buffer to receive the relevant handles
  *
  * This function is meant for U-Boot internal calls. For the API implementation
  * of the LocateHandle service see efi_locate_handle_ext.
  *
- * @search_type		selection criterion
- * @protocol		GUID of the protocol
- * @search_key		registration key
- * @buffer_size		size of the buffer to receive the handles in bytes
- * @buffer		buffer to receive the relevant handles
- * @return		status code
+ * Return: status code
  */
 static efi_status_t efi_locate_handle(
 			enum efi_locate_search_type search_type,
@@ -1259,7 +1324,7 @@ static efi_status_t efi_locate_handle(
 	/* Count how much space we need */
 	list_for_each_entry(efiobj, &efi_obj_list, link) {
 		if (!efi_search(search_type, protocol, search_key, efiobj))
-			size += sizeof(void*);
+			size += sizeof(void *);
 	}
 
 	if (*buffer_size < size) {
@@ -1280,19 +1345,20 @@ static efi_status_t efi_locate_handle(
 	return EFI_SUCCESS;
 }
 
-/*
- * Locate handles implementing a protocol.
+/**
+ * efi_locate_handle_ext() - locate handles implementing a protocol.
+ * @search_type: selection criterion
+ * @protocol:    GUID of the protocol
+ * @search_key:  registration key
+ * @buffer_size: size of the buffer to receive the handles in bytes
+ * @buffer:      buffer to receive the relevant handles
  *
  * This function implements the LocateHandle service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @search_type		selection criterion
- * @protocol		GUID of the protocol
- * @search_key		registration key
- * @buffer_size		size of the buffer to receive the handles in bytes
- * @buffer		buffer to receive the relevant handles
- * @return		0 if the handle implements the protocol
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: 0 if the handle implements the protocol
  */
 static efi_status_t EFIAPI efi_locate_handle_ext(
 			enum efi_locate_search_type search_type,
@@ -1306,39 +1372,50 @@ static efi_status_t EFIAPI efi_locate_handle_ext(
 			buffer_size, buffer));
 }
 
-/* Collapses configuration table entries, removing index i */
+/**
+ * efi_remove_configuration_table() - collapses configuration table entries,
+ *                                    removing index i
+ *
+ * @i: index of the table entry to be removed
+ */
 static void efi_remove_configuration_table(int i)
 {
-	struct efi_configuration_table *this = &efi_conf_table[i];
-	struct efi_configuration_table *next = &efi_conf_table[i+1];
-	struct efi_configuration_table *end = &efi_conf_table[systab.nr_tables];
+	struct efi_configuration_table *this = &systab.tables[i];
+	struct efi_configuration_table *next = &systab.tables[i + 1];
+	struct efi_configuration_table *end = &systab.tables[systab.nr_tables];
 
 	memmove(this, next, (ulong)end - (ulong)next);
 	systab.nr_tables--;
 }
 
-/*
- * Adds, updates, or removes a configuration table.
+/**
+ * efi_install_configuration_table() - adds, updates, or removes a
+ *                                     configuration table
+ * @guid:  GUID of the installed table
+ * @table: table to be installed
  *
  * This function is used for internal calls. For the API implementation of the
  * InstallConfigurationTable service see efi_install_configuration_table_ext.
  *
- * @guid		GUID of the installed table
- * @table		table to be installed
- * @return		status code
+ * Return: status code
  */
-efi_status_t efi_install_configuration_table(const efi_guid_t *guid, void *table)
+efi_status_t efi_install_configuration_table(const efi_guid_t *guid,
+					     void *table)
 {
+	struct efi_event *evt;
 	int i;
+
+	if (!guid)
+		return EFI_INVALID_PARAMETER;
 
 	/* Check for guid override */
 	for (i = 0; i < systab.nr_tables; i++) {
-		if (!guidcmp(guid, &efi_conf_table[i].guid)) {
+		if (!guidcmp(guid, &systab.tables[i].guid)) {
 			if (table)
-				efi_conf_table[i].table = table;
+				systab.tables[i].table = table;
 			else
 				efi_remove_configuration_table(i);
-			return EFI_SUCCESS;
+			goto out;
 		}
 	}
 
@@ -1346,27 +1423,41 @@ efi_status_t efi_install_configuration_table(const efi_guid_t *guid, void *table
 		return EFI_NOT_FOUND;
 
 	/* No override, check for overflow */
-	if (i >= ARRAY_SIZE(efi_conf_table))
+	if (i >= EFI_MAX_CONFIGURATION_TABLES)
 		return EFI_OUT_OF_RESOURCES;
 
 	/* Add a new entry */
-	memcpy(&efi_conf_table[i].guid, guid, sizeof(*guid));
-	efi_conf_table[i].table = table;
+	memcpy(&systab.tables[i].guid, guid, sizeof(*guid));
+	systab.tables[i].table = table;
 	systab.nr_tables = i + 1;
+
+out:
+	/* systab.nr_tables may have changed. So we need to update the crc32 */
+	efi_update_table_header_crc32(&systab.hdr);
+
+	/* Notify that the configuration table was changed */
+	list_for_each_entry(evt, &efi_events, link) {
+		if (evt->group && !guidcmp(evt->group, guid)) {
+			efi_signal_event(evt, false);
+			break;
+		}
+	}
 
 	return EFI_SUCCESS;
 }
 
-/*
- * Adds, updates, or removes a configuration table.
+/**
+ * efi_install_configuration_table_ex() - Adds, updates, or removes a
+ *                                        configuration table.
+ * @guid:  GUID of the installed table
+ * @table: table to be installed
  *
  * This function implements the InstallConfigurationTable service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @guid		GUID of the installed table
- * @table		table to be installed
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_install_configuration_table_ext(efi_guid_t *guid,
 							       void *table)
@@ -1375,16 +1466,17 @@ static efi_status_t EFIAPI efi_install_configuration_table_ext(efi_guid_t *guid,
 	return EFI_EXIT(efi_install_configuration_table(guid, table));
 }
 
-/*
- * Initialize a loaded_image_info + loaded_image_info object with correct
+/**
+ * efi_setup_loaded_image() - initialize a loaded image
+ * @info:        loaded image info to be passed to the entry point of the image
+ * @obj:         internal object associated with the loaded image
+ * @device_path: device path of the loaded image
+ * @file_path:   file path of the loaded image
+ *
+ * Initialize a loaded_image_info and loaded_image_info object with correct
  * protocols, boot-device, etc.
  *
- * @info		loaded image info to be passed to the entry point of the
- *			image
- * @obj			internal object associated with the loaded image
- * @device_path		device path of the loaded image
- * @file_path		file path of the loaded image
- * @return		status code
+ * Return: status code
  */
 efi_status_t efi_setup_loaded_image(
 			struct efi_loaded_image *info, struct efi_object *obj,
@@ -1398,6 +1490,7 @@ efi_status_t efi_setup_loaded_image(
 	/* efi_exit() assumes that the handle points to the info */
 	obj->handle = info;
 
+	info->revision =  EFI_LOADED_IMAGE_PROTOCOL_REVISION;
 	info->file_path = file_path;
 
 	if (device_path) {
@@ -1420,14 +1513,15 @@ efi_status_t efi_setup_loaded_image(
 	if (ret != EFI_SUCCESS)
 		goto failure;
 
-	ret = efi_add_protocol(obj->handle, &efi_guid_console_control,
-			       (void *)&efi_console_control);
+	ret = efi_add_protocol(obj->handle,
+			       &efi_guid_device_path_to_text_protocol,
+			       (void *)&efi_device_path_to_text);
 	if (ret != EFI_SUCCESS)
 		goto failure;
 
 	ret = efi_add_protocol(obj->handle,
-			       &efi_guid_device_path_to_text_protocol,
-			       (void *)&efi_device_path_to_text);
+			       &efi_guid_device_path_utilities_protocol,
+			       (void *)&efi_device_path_utilities);
 	if (ret != EFI_SUCCESS)
 		goto failure;
 
@@ -1437,12 +1531,12 @@ failure:
 	return ret;
 }
 
-/*
- * Load an image using a file path.
+/**
+ * efi_load_image_from_path() - load an image using a file path
+ * @file_path: the path of the image to load
+ * @buffer:    buffer containing the loaded image
  *
- * @file_path		the path of the image to load
- * @buffer		buffer containing the loaded image
- * @return		status code
+ * Return: status code
  */
 efi_status_t efi_load_image_from_path(struct efi_device_path *file_path,
 				      void **buffer)
@@ -1450,7 +1544,7 @@ efi_status_t efi_load_image_from_path(struct efi_device_path *file_path,
 	struct efi_file_info *info = NULL;
 	struct efi_file_handle *f;
 	static efi_status_t ret;
-	uint64_t bs;
+	efi_uintn_t bs;
 
 	f = efi_file_from_path(file_path);
 	if (!f)
@@ -1471,7 +1565,8 @@ efi_status_t efi_load_image_from_path(struct efi_device_path *file_path,
 	if (ret)
 		goto error;
 
-	EFI_CALL(ret = f->read(f, &info->file_size, *buffer));
+	bs = info->file_size;
+	EFI_CALL(ret = f->read(f, &bs, *buffer));
 
 error:
 	free(info);
@@ -1485,38 +1580,57 @@ error:
 	return ret;
 }
 
-/*
- * Load an EFI image into memory.
+/**
+ * efi_load_image() - load an EFI image into memory
+ * @boot_policy:   true for request originating from the boot manager
+ * @parent_image:  the caller's image handle
+ * @file_path:     the path of the image to load
+ * @source_buffer: memory location from which the image is installed
+ * @source_size:   size of the memory area from which the image is installed
+ * @image_handle:  handle for the newly installed image
  *
  * This function implements the LoadImage service.
+ *
  * See the Unified Extensible Firmware Interface (UEFI) specification
  * for details.
  *
- * @boot_policy		true for request originating from the boot manager
- * @parent_image	the caller's image handle
- * @file_path		the path of the image to load
- * @source_buffer	memory location from which the image is installed
- * @source_size		size of the memory area from which the image is
- *			installed
- * @image_handle	handle for the newly installed image
- * @return		status code
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_load_image(bool boot_policy,
 					  efi_handle_t parent_image,
 					  struct efi_device_path *file_path,
 					  void *source_buffer,
-					  unsigned long source_size,
+					  efi_uintn_t source_size,
 					  efi_handle_t *image_handle)
 {
 	struct efi_loaded_image *info;
 	struct efi_object *obj;
 	efi_status_t ret;
 
-	EFI_ENTRY("%d, %p, %pD, %p, %ld, %p", boot_policy, parent_image,
+	EFI_ENTRY("%d, %p, %pD, %p, %zd, %p", boot_policy, parent_image,
 		  file_path, source_buffer, source_size, image_handle);
 
+	if (!image_handle || !parent_image) {
+		ret = EFI_INVALID_PARAMETER;
+		goto error;
+	}
+
+	if (!source_buffer && !file_path) {
+		ret = EFI_NOT_FOUND;
+		goto error;
+	}
+
 	info = calloc(1, sizeof(*info));
+	if (!info) {
+		ret = EFI_OUT_OF_RESOURCES;
+		goto error;
+	}
 	obj = calloc(1, sizeof(*obj));
+	if (!obj) {
+		free(info);
+		ret = EFI_OUT_OF_RESOURCES;
+		goto error;
+	}
 
 	if (!source_buffer) {
 		struct efi_device_path *dp, *fp;
@@ -1552,20 +1666,22 @@ static efi_status_t EFIAPI efi_load_image(bool boot_policy,
 failure:
 	free(info);
 	efi_delete_handle(obj);
+error:
 	return EFI_EXIT(ret);
 }
 
-/*
- * Call the entry point of an image.
+/**
+ * efi_start_image() - dall the entry point of an image
+ * @image_handle:   handle of the image
+ * @exit_data_size: size of the buffer
+ * @exit_data:      buffer to receive the exit data of the called image
  *
  * This function implements the StartImage service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @image_handle	handle of the image
- * @exit_data_size	size of the buffer
- * @exit_data		buffer to receive the exit data of the called image
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_start_image(efi_handle_t image_handle,
 					   unsigned long *exit_data_size,
@@ -1621,22 +1737,24 @@ static efi_status_t EFIAPI efi_start_image(efi_handle_t image_handle,
 	return EFI_CALL(systab.boottime->exit(image_handle, ret, 0, NULL));
 }
 
-/*
- * Leave an EFI application or driver.
+/**
+ * efi_exit() - leave an EFI application or driver
+ * @image_handle:   handle of the application or driver that is exiting
+ * @exit_status:    status code
+ * @exit_data_size: size of the buffer in bytes
+ * @exit_data:      buffer with data describing an error
  *
  * This function implements the Exit service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @image_handle	handle of the application or driver that is exiting
- * @exit_status		status code
- * @exit_data_size	size of the buffer in bytes
- * @exit_data		buffer with data describing an error
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_exit(efi_handle_t image_handle,
-			efi_status_t exit_status, unsigned long exit_data_size,
-			int16_t *exit_data)
+				    efi_status_t exit_status,
+				    unsigned long exit_data_size,
+				    int16_t *exit_data)
 {
 	/*
 	 * We require that the handle points to the original loaded
@@ -1649,7 +1767,7 @@ static efi_status_t EFIAPI efi_exit(efi_handle_t image_handle,
 	 * TODO: We should call the unload procedure of the loaded
 	 *	 image protocol.
 	 */
-	struct efi_loaded_image *loaded_image_info = (void*)image_handle;
+	struct efi_loaded_image *loaded_image_info = (void *)image_handle;
 
 	EFI_ENTRY("%p, %ld, %ld, %p", image_handle, exit_status,
 		  exit_data_size, exit_data);
@@ -1669,15 +1787,16 @@ static efi_status_t EFIAPI efi_exit(efi_handle_t image_handle,
 	panic("EFI application exited");
 }
 
-/*
- * Unload an EFI image.
+/**
+ * efi_unload_image() - unload an EFI image
+ * @image_handle: handle of the image to be unloaded
  *
  * This function implements the UnloadImage service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @image_handle	handle of the image to be unloaded
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_unload_image(efi_handle_t image_handle)
 {
@@ -1691,8 +1810,8 @@ static efi_status_t EFIAPI efi_unload_image(efi_handle_t image_handle)
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Fix up caches for EFI payloads if necessary.
+/**
+ * efi_exit_caches() - fix up caches for EFI payloads if necessary
  */
 static void efi_exit_caches(void)
 {
@@ -1706,27 +1825,32 @@ static void efi_exit_caches(void)
 #endif
 }
 
-/*
- * Stop all boot services.
+/**
+ * efi_exit_boot_services() - stop all boot services
+ * @image_handle: handle of the loaded image
+ * @map_key:      key of the memory map
  *
  * This function implements the ExitBootServices service.
+ *
  * See the Unified Extensible Firmware Interface (UEFI) specification
  * for details.
  *
- * All timer events are disabled.
- * For exit boot services events the notification function is called.
- * The boot services are disabled in the system table.
+ * All timer events are disabled. For exit boot services events the
+ * notification function is called. The boot services are disabled in the
+ * system table.
  *
- * @image_handle	handle of the loaded image
- * @map_key		key of the memory map
- * @return		status code
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_exit_boot_services(efi_handle_t image_handle,
 						  unsigned long map_key)
 {
-	int i;
+	struct efi_event *evt;
 
 	EFI_ENTRY("%p, %ld", image_handle, map_key);
+
+	/* Check that the caller has read the current memory map */
+	if (map_key != efi_memory_map_key)
+		return EFI_INVALID_PARAMETER;
 
 	/* Make sure that notification functions are not called anymore */
 	efi_tpl = TPL_HIGH_LEVEL;
@@ -1735,12 +1859,19 @@ static efi_status_t EFIAPI efi_exit_boot_services(efi_handle_t image_handle,
 	if (!systab.boottime)
 		return EFI_EXIT(EFI_SUCCESS);
 
+	/* Add related events to the event group */
+	list_for_each_entry(evt, &efi_events, link) {
+		if (evt->type == EVT_SIGNAL_EXIT_BOOT_SERVICES)
+			evt->group = &efi_guid_event_group_exit_boot_services;
+	}
 	/* Notify that ExitBootServices is invoked. */
-	for (i = 0; i < ARRAY_SIZE(efi_events); ++i) {
-		if (efi_events[i].type != EVT_SIGNAL_EXIT_BOOT_SERVICES)
-			continue;
-		efi_events[i].is_signaled = true;
-		efi_signal_event(&efi_events[i], false);
+	list_for_each_entry(evt, &efi_events, link) {
+		if (evt->group &&
+		    !guidcmp(evt->group,
+			     &efi_guid_event_group_exit_boot_services)) {
+			efi_signal_event(evt, false);
+			break;
+		}
 	}
 
 	/* TODO Should persist EFI variables here */
@@ -1763,9 +1894,7 @@ static efi_status_t EFIAPI efi_exit_boot_services(efi_handle_t image_handle,
 	systab.boottime = NULL;
 
 	/* Recalculate CRC32 */
-	systab.hdr.crc32 = 0;
-	systab.hdr.crc32 = crc32(0, (const unsigned char *)&systab,
-				 sizeof(struct efi_system_table));
+	efi_update_table_header_crc32(&systab.hdr);
 
 	/* Give the payload some time to boot */
 	efi_set_watchdog(0);
@@ -1774,33 +1903,36 @@ static efi_status_t EFIAPI efi_exit_boot_services(efi_handle_t image_handle,
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Get next value of the counter.
+/**
+ * efi_get_next_monotonic_count() - get next value of the counter
+ * @count: returned value of the counter
  *
  * This function implements the NextMonotonicCount service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @count	returned value of the counter
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_get_next_monotonic_count(uint64_t *count)
 {
-	static uint64_t mono = 0;
+	static uint64_t mono;
+
 	EFI_ENTRY("%p", count);
 	*count = mono++;
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Sleep.
+/**
+ * efi_stall() - sleep
+ * @microseconds: period to sleep in microseconds
  *
- * This function implements the Stall sercive.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
+ * This function implements the Stall service.
  *
- * @microseconds	period to sleep in microseconds
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return:  status code
  */
 static efi_status_t EFIAPI efi_stall(unsigned long microseconds)
 {
@@ -1809,41 +1941,43 @@ static efi_status_t EFIAPI efi_stall(unsigned long microseconds)
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Reset the watchdog timer.
+/**
+ * efi_set_watchdog_timer() - reset the watchdog timer
+ * @timeout:       seconds before reset by watchdog
+ * @watchdog_code: code to be logged when resetting
+ * @data_size:     size of buffer in bytes
+ * @watchdog_data: buffer with data describing the reset reason
  *
  * This function implements the SetWatchdogTimer service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @timeout		seconds before reset by watchdog
- * @watchdog_code	code to be logged when resetting
- * @data_size		size of buffer in bytes
- * @watchdog_data	buffer with data describing the reset reason
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_set_watchdog_timer(unsigned long timeout,
 						  uint64_t watchdog_code,
 						  unsigned long data_size,
 						  uint16_t *watchdog_data)
 {
-	EFI_ENTRY("%ld, 0x%"PRIx64", %ld, %p", timeout, watchdog_code,
+	EFI_ENTRY("%ld, 0x%llx, %ld, %p", timeout, watchdog_code,
 		  data_size, watchdog_data);
 	return EFI_EXIT(efi_set_watchdog(timeout));
 }
 
-/*
- * Close a protocol.
+/**
+ * efi_close_protocol() - close a protocol
+ * @handle:            handle on which the protocol shall be closed
+ * @protocol:          GUID of the protocol to close
+ * @agent_handle:      handle of the driver
+ * @controller_handle: handle of the controller
  *
  * This function implements the CloseProtocol service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle		handle on which the protocol shall be closed
- * @protocol		GUID of the protocol to close
- * @agent_handle	handle of the driver
- * @controller_handle	handle of the controller
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_close_protocol(efi_handle_t handle,
 					      const efi_guid_t *protocol,
@@ -1879,21 +2013,23 @@ out:
 	return EFI_EXIT(r);
 }
 
-/*
- * Provide information about then open status of a protocol on a handle
+/**
+ * efi_open_protocol_information() - provide information about then open status
+ *                                   of a protocol on a handle
+ * @handle:       handle for which the information shall be retrieved
+ * @protocol:     GUID of the protocol
+ * @entry_buffer: buffer to receive the open protocol information
+ * @entry_count:  number of entries available in the buffer
  *
  * This function implements the OpenProtocolInformation service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle		handle for which the information shall be retrieved
- * @protocol		GUID of the protocol
- * @entry_buffer	buffer to receive the open protocol information
- * @entry_count		number of entries available in the buffer
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
-static efi_status_t EFIAPI efi_open_protocol_information(efi_handle_t handle,
-			const efi_guid_t *protocol,
+static efi_status_t EFIAPI efi_open_protocol_information(
+			efi_handle_t handle, const efi_guid_t *protocol,
 			struct efi_open_protocol_info_entry **entry_buffer,
 			efi_uintn_t *entry_count)
 {
@@ -1942,17 +2078,18 @@ out:
 	return EFI_EXIT(r);
 }
 
-/*
- * Get protocols installed on a handle.
+/**
+ * efi_protocols_per_handle() - get protocols installed on a handle
+ * @handle:                handle for which the information is retrieved
+ * @protocol_buffer:       buffer with protocol GUIDs
+ * @protocol_buffer_count: number of entries in the buffer
  *
  * This function implements the ProtocolsPerHandleService.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle			handle for which the information is retrieved
- * @protocol_buffer		buffer with protocol GUIDs
- * @protocol_buffer_count	number of entries in the buffer
- * @return			status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_protocols_per_handle(
 			efi_handle_t handle, efi_guid_t ***protocol_buffer,
@@ -2003,19 +2140,20 @@ static efi_status_t EFIAPI efi_protocols_per_handle(
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Locate handles implementing a protocol.
+/**
+ * efi_locate_handle_buffer() - locate handles implementing a protocol
+ * @search_type: selection criterion
+ * @protocol:    GUID of the protocol
+ * @search_key:  registration key
+ * @no_handles:  number of returned handles
+ * @buffer:      buffer with the returned handles
  *
  * This function implements the LocateHandleBuffer service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @search_type		selection criterion
- * @protocol		GUID of the protocol
- * @search_key		registration key
- * @no_handles		number of returned handles
- * @buffer		buffer with the returned handles
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_locate_handle_buffer(
 			enum efi_locate_search_type search_type,
@@ -2050,17 +2188,18 @@ out:
 	return EFI_EXIT(r);
 }
 
-/*
- * Find an interface implementing a protocol.
+/**
+ * efi_locate_protocol() - find an interface implementing a protocol
+ * @protocol:           GUID of the protocol
+ * @registration:       registration key passed to the notification function
+ * @protocol_interface: interface implementing the protocol
  *
  * This function implements the LocateProtocol service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @protocol		GUID of the protocol
- * @registration	registration key passed to the notification function
- * @protocol_interface	interface implementing the protocol
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_locate_protocol(const efi_guid_t *protocol,
 					       void *registration,
@@ -2091,17 +2230,19 @@ static efi_status_t EFIAPI efi_locate_protocol(const efi_guid_t *protocol,
 	return EFI_EXIT(EFI_NOT_FOUND);
 }
 
-/*
- * Get the device path and handle of an device implementing a protocol.
+/**
+ * efi_locate_device_path() - Get the device path and handle of an device
+ *                            implementing a protocol
+ * @protocol:    GUID of the protocol
+ * @device_path: device path
+ * @device:      handle of the device
  *
  * This function implements the LocateDevicePath service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @protocol		GUID of the protocol
- * @device_path		device path
- * @device		handle of the device
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_locate_device_path(
 			const efi_guid_t *protocol,
@@ -2126,7 +2267,7 @@ static efi_status_t EFIAPI efi_locate_device_path(
 	}
 
 	/* Find end of device path */
-	len = efi_dp_size(*device_path);
+	len = efi_dp_instance_size(*device_path);
 
 	/* Get all handles implementing the protocol */
 	ret = EFI_CALL(efi_locate_handle_buffer(BY_PROTOCOL, protocol, NULL,
@@ -2141,7 +2282,7 @@ static efi_status_t EFIAPI efi_locate_device_path(
 		if (ret != EFI_SUCCESS)
 			continue;
 		dp = (struct efi_device_path *)handler->protocol_interface;
-		len_dp = efi_dp_size(dp);
+		len_dp = efi_dp_instance_size(dp);
 		/*
 		 * This handle can only be a better fit
 		 * if its device path length is longer than the best fit and
@@ -2167,24 +2308,26 @@ out:
 	return EFI_EXIT(ret);
 }
 
-/*
- * Install multiple protocol interfaces.
+/**
+ * efi_install_multiple_protocol_interfaces() - Install multiple protocol
+ *                                              interfaces
+ * @handle: handle on which the protocol interfaces shall be installed
+ * @...:    NULL terminated argument list with pairs of protocol GUIDS and
+ *          interfaces
  *
  * This function implements the MultipleProtocolInterfaces service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle	handle on which the protocol interfaces shall be installed
- * @...		NULL terminated argument list with pairs of protocol GUIDS and
- *		interfaces
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_install_multiple_protocol_interfaces(
 			void **handle, ...)
 {
 	EFI_ENTRY("%p", handle);
 
-	va_list argptr;
+	efi_va_list argptr;
 	const efi_guid_t *protocol;
 	void *protocol_interface;
 	efi_status_t r = EFI_SUCCESS;
@@ -2193,12 +2336,12 @@ static efi_status_t EFIAPI efi_install_multiple_protocol_interfaces(
 	if (!handle)
 		return EFI_EXIT(EFI_INVALID_PARAMETER);
 
-	va_start(argptr, handle);
+	efi_va_start(argptr, handle);
 	for (;;) {
-		protocol = va_arg(argptr, efi_guid_t*);
+		protocol = efi_va_arg(argptr, efi_guid_t*);
 		if (!protocol)
 			break;
-		protocol_interface = va_arg(argptr, void*);
+		protocol_interface = efi_va_arg(argptr, void*);
 		r = EFI_CALL(efi_install_protocol_interface(
 						handle, protocol,
 						EFI_NATIVE_INTERFACE,
@@ -2207,41 +2350,43 @@ static efi_status_t EFIAPI efi_install_multiple_protocol_interfaces(
 			break;
 		i++;
 	}
-	va_end(argptr);
+	efi_va_end(argptr);
 	if (r == EFI_SUCCESS)
 		return EFI_EXIT(r);
 
 	/* If an error occurred undo all changes. */
-	va_start(argptr, handle);
+	efi_va_start(argptr, handle);
 	for (; i; --i) {
-		protocol = va_arg(argptr, efi_guid_t*);
-		protocol_interface = va_arg(argptr, void*);
+		protocol = efi_va_arg(argptr, efi_guid_t*);
+		protocol_interface = efi_va_arg(argptr, void*);
 		EFI_CALL(efi_uninstall_protocol_interface(handle, protocol,
 							  protocol_interface));
 	}
-	va_end(argptr);
+	efi_va_end(argptr);
 
 	return EFI_EXIT(r);
 }
 
-/*
- * Uninstall multiple protocol interfaces.
+/**
+ * efi_uninstall_multiple_protocol_interfaces() - uninstall multiple protocol
+ *                                                interfaces
+ * @handle: handle from which the protocol interfaces shall be removed
+ * @...:    NULL terminated argument list with pairs of protocol GUIDS and
+ *          interfaces
  *
  * This function implements the UninstallMultipleProtocolInterfaces service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle	handle from which the protocol interfaces shall be removed
- * @...		NULL terminated argument list with pairs of protocol GUIDS and
- *		interfaces
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_uninstall_multiple_protocol_interfaces(
 			void *handle, ...)
 {
 	EFI_ENTRY("%p", handle);
 
-	va_list argptr;
+	efi_va_list argptr;
 	const efi_guid_t *protocol;
 	void *protocol_interface;
 	efi_status_t r = EFI_SUCCESS;
@@ -2250,12 +2395,12 @@ static efi_status_t EFIAPI efi_uninstall_multiple_protocol_interfaces(
 	if (!handle)
 		return EFI_EXIT(EFI_INVALID_PARAMETER);
 
-	va_start(argptr, handle);
+	efi_va_start(argptr, handle);
 	for (;;) {
-		protocol = va_arg(argptr, efi_guid_t*);
+		protocol = efi_va_arg(argptr, efi_guid_t*);
 		if (!protocol)
 			break;
-		protocol_interface = va_arg(argptr, void*);
+		protocol_interface = efi_va_arg(argptr, void*);
 		r = EFI_CALL(efi_uninstall_protocol_interface(
 						handle, protocol,
 						protocol_interface));
@@ -2263,55 +2408,56 @@ static efi_status_t EFIAPI efi_uninstall_multiple_protocol_interfaces(
 			break;
 		i++;
 	}
-	va_end(argptr);
+	efi_va_end(argptr);
 	if (r == EFI_SUCCESS)
 		return EFI_EXIT(r);
 
 	/* If an error occurred undo all changes. */
-	va_start(argptr, handle);
+	efi_va_start(argptr, handle);
 	for (; i; --i) {
-		protocol = va_arg(argptr, efi_guid_t*);
-		protocol_interface = va_arg(argptr, void*);
+		protocol = efi_va_arg(argptr, efi_guid_t*);
+		protocol_interface = efi_va_arg(argptr, void*);
 		EFI_CALL(efi_install_protocol_interface(&handle, protocol,
 							EFI_NATIVE_INTERFACE,
 							protocol_interface));
 	}
-	va_end(argptr);
+	efi_va_end(argptr);
 
 	return EFI_EXIT(r);
 }
 
-/*
- * Calculate cyclic redundancy code.
+/**
+ * efi_calculate_crc32() - calculate cyclic redundancy code
+ * @data:      buffer with data
+ * @data_size: size of buffer in bytes
+ * @crc32_p:   cyclic redundancy code
  *
  * This function implements the CalculateCrc32 service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @data	buffer with data
- * @data_size	size of buffer in bytes
- * @crc32_p	cyclic redundancy code
- * @return	status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
-static efi_status_t EFIAPI efi_calculate_crc32(void *data,
-					       unsigned long data_size,
-					       uint32_t *crc32_p)
+static efi_status_t EFIAPI efi_calculate_crc32(const void *data,
+					       efi_uintn_t data_size,
+					       u32 *crc32_p)
 {
-	EFI_ENTRY("%p, %ld", data, data_size);
+	EFI_ENTRY("%p, %zu", data, data_size);
 	*crc32_p = crc32(0, data, data_size);
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Copy memory.
+/**
+ * efi_copy_mem() - copy memory
+ * @destination: destination of the copy operation
+ * @source:      source of the copy operation
+ * @length:      number of bytes to copy
  *
  * This function implements the CopyMem service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @destination		destination of the copy operation
- * @source		source of the copy operation
- * @length		number of bytes to copy
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
  */
 static void EFIAPI efi_copy_mem(void *destination, const void *source,
 				size_t length)
@@ -2321,16 +2467,16 @@ static void EFIAPI efi_copy_mem(void *destination, const void *source,
 	EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Fill memory with a byte value.
+/**
+ * efi_set_mem() - Fill memory with a byte value.
+ * @buffer: buffer to fill
+ * @size:   size of buffer in bytes
+ * @value:  byte to copy to the buffer
  *
  * This function implements the SetMem service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @buffer		buffer to fill
- * @size		size of buffer in bytes
- * @value		byte to copy to the buffer
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
  */
 static void EFIAPI efi_set_mem(void *buffer, size_t size, uint8_t value)
 {
@@ -2339,15 +2485,15 @@ static void EFIAPI efi_set_mem(void *buffer, size_t size, uint8_t value)
 	EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Open protocol interface on a handle.
+/**
+ * efi_protocol_open() - open protocol interface on a handle
+ * @handler:            handler of a protocol
+ * @protocol_interface: interface implementing the protocol
+ * @agent_handle:       handle of the driver
+ * @controller_handle:  handle of the controller
+ * @attributes:         attributes indicating how to open the protocol
  *
- * @handler		handler of a protocol
- * @protocol_interface	interface implementing the protocol
- * @agent_handle	handle of the driver
- * @controller_handle	handle of the controller
- * @attributes		attributes indicating how to open the protocol
- * @return		status code
+ * Return: status code
  */
 static efi_status_t efi_protocol_open(
 			struct efi_handler *handler,
@@ -2434,20 +2580,21 @@ out:
 	return EFI_SUCCESS;
 }
 
-/*
- * Open protocol interface on a handle.
+/**
+ * efi_open_protocol() - open protocol interface on a handle
+ * @handle:             handle on which the protocol shall be opened
+ * @protocol:           GUID of the protocol
+ * @protocol_interface: interface implementing the protocol
+ * @agent_handle:       handle of the driver
+ * @controller_handle:  handle of the controller
+ * @attributes:         attributes indicating how to open the protocol
  *
  * This function implements the OpenProtocol interface.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle		handle on which the protocol shall be opened
- * @protocol		GUID of the protocol
- * @protocol_interface	interface implementing the protocol
- * @agent_handle	handle of the driver
- * @controller_handle	handle of the controller
- * @attributes		attributes indicating how to open the protocol
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_open_protocol(
 			void *handle, const efi_guid_t *protocol,
@@ -2501,17 +2648,18 @@ out:
 	return EFI_EXIT(r);
 }
 
-/*
- * Get interface of a protocol on a handle.
+/**
+ * efi_handle_protocol() - get interface of a protocol on a handle
+ * @handle:             handle on which the protocol shall be opened
+ * @protocol:           GUID of the protocol
+ * @protocol_interface: interface implementing the protocol
  *
  * This function implements the HandleProtocol service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @handle		handle on which the protocol shall be opened
- * @protocol		GUID of the protocol
- * @protocol_interface  interface implementing the protocol
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_handle_protocol(efi_handle_t handle,
 					       const efi_guid_t *protocol,
@@ -2521,6 +2669,14 @@ static efi_status_t EFIAPI efi_handle_protocol(efi_handle_t handle,
 				 NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 }
 
+/**
+ * efi_bind_controller() - bind a single driver to a controller
+ * @controller_handle:   controller handle
+ * @driver_image_handle: driver handle
+ * @remain_device_path:  remaining path
+ *
+ * Return: status code
+ */
 static efi_status_t efi_bind_controller(
 			efi_handle_t controller_handle,
 			efi_handle_t driver_image_handle,
@@ -2549,6 +2705,14 @@ static efi_status_t efi_bind_controller(
 	return r;
 }
 
+/**
+ * efi_connect_single_controller() - connect a single driver to a controller
+ * @controller_handle:   controller
+ * @driver_image_handle: driver
+ * @remain_device_path:  remainting path
+ *
+ * Return: status code
+ */
 static efi_status_t efi_connect_single_controller(
 			efi_handle_t controller_handle,
 			efi_handle_t *driver_image_handle,
@@ -2613,22 +2777,23 @@ static efi_status_t efi_connect_single_controller(
 	return EFI_SUCCESS;
 }
 
-/*
- * Connect a controller to a driver.
+/**
+ * efi_connect_controller() - connect a controller to a driver
+ * @controller_handle:   handle of the controller
+ * @driver_image_handle: handle of the driver
+ * @remain_device_path:  device path of a child controller
+ * @recursive:           true to connect all child controllers
  *
  * This function implements the ConnectController service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
  *
  * First all driver binding protocol handles are tried for binding drivers.
  * Afterwards all handles that have openened a protocol of the controller
  * with EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER are connected to drivers.
  *
- * @controller_handle	handle of the controller
- * @driver_image_handle	handle of the driver
- * @remain_device_path	device path of a child controller
- * @recursive		true to connect all child controllers
- * @return		status code
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_connect_controller(
 			efi_handle_t controller_handle,
@@ -2681,14 +2846,59 @@ out:
 	return EFI_EXIT(ret);
 }
 
-/*
- * Get all child controllers associated to a driver.
+/**
+ * efi_reinstall_protocol_interface() - reinstall protocol interface
+ * @handle:        handle on which the protocol shall be reinstalled
+ * @protocol:      GUID of the protocol to be installed
+ * @old_interface: interface to be removed
+ * @new_interface: interface to be installed
+ *
+ * This function implements the ReinstallProtocolInterface service.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * The old interface is uninstalled. The new interface is installed.
+ * Drivers are connected.
+ *
+ * Return: status code
+ */
+static efi_status_t EFIAPI efi_reinstall_protocol_interface(
+			efi_handle_t handle, const efi_guid_t *protocol,
+			void *old_interface, void *new_interface)
+{
+	efi_status_t ret;
+
+	EFI_ENTRY("%p, %pUl, %p, %p", handle, protocol, old_interface,
+		  new_interface);
+	ret = EFI_CALL(efi_uninstall_protocol_interface(handle, protocol,
+							old_interface));
+	if (ret != EFI_SUCCESS)
+		goto out;
+	ret = EFI_CALL(efi_install_protocol_interface(&handle, protocol,
+						      EFI_NATIVE_INTERFACE,
+						      new_interface));
+	if (ret != EFI_SUCCESS)
+		goto out;
+	/*
+	 * The returned status code has to be ignored.
+	 * Do not create an error if no suitable driver for the handle exists.
+	 */
+	EFI_CALL(efi_connect_controller(handle, NULL, NULL, true));
+out:
+	return EFI_EXIT(ret);
+}
+
+/**
+ * efi_get_child_controllers() - get all child controllers associated to a driver
+ * @efiobj:              handle of the controller
+ * @driver_handle:       handle of the driver
+ * @number_of_children:  number of child controllers
+ * @child_handle_buffer: handles of the the child controllers
+ *
  * The allocated buffer has to be freed with free().
  *
- * @efiobj			handle of the controller
- * @driver_handle		handle of the driver
- * @number_of_children		number of child controllers
- * @child_handle_buffer		handles of the the child controllers
+ * Return: status code
  */
 static efi_status_t efi_get_child_controllers(
 				struct efi_object *efiobj,
@@ -2743,17 +2953,18 @@ static efi_status_t efi_get_child_controllers(
 	return EFI_SUCCESS;
 }
 
-/*
- * Disconnect a controller from a driver.
+/**
+ * efi_disconnect_controller() - disconnect a controller from a driver
+ * @controller_handle:   handle of the controller
+ * @driver_image_handle: handle of the driver
+ * @child_handle:        handle of the child to destroy
  *
  * This function implements the DisconnectController service.
- * See the Unified Extensible Firmware Interface (UEFI) specification
- * for details.
  *
- * @controller_handle	handle of the controller
- * @driver_image_handle handle of the driver
- * @child_handle	handle of the child to destroy
- * @return		status code
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * Return: status code
  */
 static efi_status_t EFIAPI efi_disconnect_controller(
 				efi_handle_t controller_handle,
@@ -2836,9 +3047,11 @@ out:
 	return EFI_EXIT(r);
 }
 
-static const struct efi_boot_services efi_boot_services = {
+static struct efi_boot_services efi_boot_services = {
 	.hdr = {
-		.headersize = sizeof(struct efi_table_hdr),
+		.signature = EFI_BOOT_SERVICES_SIGNATURE,
+		.revision = EFI_SPECIFICATION_VERSION,
+		.headersize = sizeof(struct efi_boot_services),
 	},
 	.raise_tpl = efi_raise_tpl,
 	.restore_tpl = efi_restore_tpl,
@@ -2878,29 +3091,54 @@ static const struct efi_boot_services efi_boot_services = {
 	.protocols_per_handle = efi_protocols_per_handle,
 	.locate_handle_buffer = efi_locate_handle_buffer,
 	.locate_protocol = efi_locate_protocol,
-	.install_multiple_protocol_interfaces = efi_install_multiple_protocol_interfaces,
-	.uninstall_multiple_protocol_interfaces = efi_uninstall_multiple_protocol_interfaces,
+	.install_multiple_protocol_interfaces =
+			efi_install_multiple_protocol_interfaces,
+	.uninstall_multiple_protocol_interfaces =
+			efi_uninstall_multiple_protocol_interfaces,
 	.calculate_crc32 = efi_calculate_crc32,
 	.copy_mem = efi_copy_mem,
 	.set_mem = efi_set_mem,
 	.create_event_ex = efi_create_event_ex,
 };
 
-
-static uint16_t __efi_runtime_data firmware_vendor[] = L"Das U-Boot";
+static u16 __efi_runtime_data firmware_vendor[] = L"Das U-Boot";
 
 struct efi_system_table __efi_runtime_data systab = {
 	.hdr = {
 		.signature = EFI_SYSTEM_TABLE_SIGNATURE,
-		.revision = 2 << 16 | 70, /* 2.7 */
-		.headersize = sizeof(struct efi_table_hdr),
+		.revision = EFI_SPECIFICATION_VERSION,
+		.headersize = sizeof(struct efi_system_table),
 	},
-	.fw_vendor = (long)firmware_vendor,
-	.con_in = (void*)&efi_con_in,
-	.con_out = (void*)&efi_con_out,
-	.std_err = (void*)&efi_con_out,
-	.runtime = (void*)&efi_runtime_services,
-	.boottime = (void*)&efi_boot_services,
+	.fw_vendor = firmware_vendor,
+	.fw_revision = FW_VERSION << 16 | FW_PATCHLEVEL << 8,
+	.con_in = (void *)&efi_con_in,
+	.con_out = (void *)&efi_con_out,
+	.std_err = (void *)&efi_con_out,
+	.runtime = (void *)&efi_runtime_services,
+	.boottime = (void *)&efi_boot_services,
 	.nr_tables = 0,
-	.tables = (void*)efi_conf_table,
+	.tables = NULL,
 };
+
+/**
+ * efi_initialize_system_table() - Initialize system table
+ *
+ * Return Value:        status code
+ */
+efi_status_t efi_initialize_system_table(void)
+{
+	efi_status_t ret;
+
+	/* Allocate configuration table array */
+	ret = efi_allocate_pool(EFI_RUNTIME_SERVICES_DATA,
+				EFI_MAX_CONFIGURATION_TABLES *
+				sizeof(struct efi_configuration_table),
+				(void **)&systab.tables);
+
+	/* Set crc32 field in table headers */
+	efi_update_table_header_crc32(&systab.hdr);
+	efi_update_table_header_crc32(&efi_runtime_services.hdr);
+	efi_update_table_header_crc32(&efi_boot_services.hdr);
+
+	return ret;
+}

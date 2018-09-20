@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2017 NXP
  * Copyright (C) 2014 Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LS2_COMMON_H
@@ -10,7 +9,6 @@
 
 #define CONFIG_REMAKE_ELF
 #define CONFIG_FSL_LAYERSCAPE
-#define CONFIG_MP
 #define CONFIG_GICV3
 #define CONFIG_FSL_TZPC_BP147
 
@@ -29,8 +27,6 @@
 #define CONFIG_ENV_OFFSET		0x300000        /* 3MB */
 #define CONFIG_ENV_SECT_SIZE		0x40000
 #endif
-
-#define CONFIG_SUPPORT_RAW_INITRD
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
@@ -79,14 +75,8 @@
 
 /* I2C */
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_MXC
-#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
-#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
-#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
-#define CONFIG_SYS_I2C_MXC_I2C4		/* enable I2C bus 4 */
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX       1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE     1
 #define CONFIG_SYS_NS16550_CLK          (get_serial_clock())
@@ -173,8 +163,6 @@ unsigned long long get_qixis_addr(void);
 /* fixme: these need to be checked against the board */
 #define CONFIG_CHIP_SELECTS_PER_CTRL	4
 
-#define CONFIG_NR_DRAM_BANKS		3
-
 #define CONFIG_HWCONFIG
 #define HWCONFIG_BUFFER_SIZE		128
 
@@ -210,9 +198,6 @@ unsigned long long get_qixis_addr(void);
 
 /* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_CMDLINE_EDITING		1
-#define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_MAXARGS		64	/* max command args */
 
 #define CONFIG_SPL_BSS_START_ADDR	0x80100000

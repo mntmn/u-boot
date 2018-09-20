@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -69,8 +68,6 @@
  * System IO Config
  */
 #define CONFIG_SYS_SICRL		0x00000000
-
-#define CONFIG_BOARD_EARLY_INIT_R
 
 /*
  * IMMR new address
@@ -286,7 +283,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -296,9 +292,6 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR+0x4600)
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
-#define CONFIG_AUTO_COMPLETE		/* add autocompletion support   */
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -393,9 +386,6 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -406,7 +396,6 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP	/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*

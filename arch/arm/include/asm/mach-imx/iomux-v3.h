@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Based on Linux i.MX iomux-v3.h file:
  * Copyright (C) 2009 by Jan Weitzel Phytec Messtechnik GmbH,
  *			<armlinux@phytec.de>
  *
  * Copyright (C) 2011 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MACH_IOMUX_V3_H__
@@ -147,10 +146,10 @@ typedef u64 iomux_v3_cfg_t;
 
 #define PAD_CTL_ODE		(1 << 11)
 
-#if defined(CONFIG_MX6SX) || defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
-#define PAD_CTL_SPEED_LOW	(0 << 6)
-#else
+#if defined(CONFIG_MX6SL)
 #define PAD_CTL_SPEED_LOW	(1 << 6)
+#else
+#define PAD_CTL_SPEED_LOW	(0 << 6)
 #endif
 #define PAD_CTL_SPEED_MED	(2 << 6)
 #define PAD_CTL_SPEED_HIGH	(3 << 6)
@@ -163,6 +162,14 @@ typedef u64 iomux_v3_cfg_t;
 #define PAD_CTL_DSE_48ohm	(5 << 3)
 #define PAD_CTL_DSE_40ohm	(6 << 3)
 #define PAD_CTL_DSE_34ohm	(7 << 3)
+
+#define PAD_CTL_DSE_260ohm	(1 << 3)
+#define PAD_CTL_DSE_130ohm	(2 << 3)
+#define PAD_CTL_DSE_88ohm	(3 << 3)
+#define PAD_CTL_DSE_65ohm	(4 << 3)
+#define PAD_CTL_DSE_52ohm	(5 << 3)
+#define PAD_CTL_DSE_43ohm	(6 << 3)
+#define PAD_CTL_DSE_37ohm	(7 << 3)
 
 /* i.MX6SL/SLL */
 #define PAD_CTL_LVE		(1 << 1)

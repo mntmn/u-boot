@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2015
  * (C) Copyright 2014
@@ -7,8 +8,6 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6Q SabreSD board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ARISTAINETOS_COMMON_CONFIG_H
 #define __ARISTAINETOS_COMMON_CONFIG_H
@@ -27,7 +26,6 @@
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
 
 #define CONFIG_FEC_MXC
-#define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_ETHPRIME			"FEC"
 #define CONFIG_FEC_MXC_PHYADDR		0
@@ -139,7 +137,6 @@
 #define CONFIG_SYS_MEMTEST_SCRATCH	0x10800000
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
@@ -194,8 +191,6 @@
 #define CONFIG_MXC_USB_FLAGS	0
 
 /* UBI support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 #define CONFIG_HW_WATCHDOG
 #define CONFIG_IMX_WATCHDOG

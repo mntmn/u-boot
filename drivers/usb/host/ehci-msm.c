@@ -1,18 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Qualcomm EHCI driver
  *
  * (C) Copyright 2015 Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
  *
  * Based on Linux driver
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <usb.h>
 #include <usb/ehci-ci.h>
 #include <usb/ulpi.h>

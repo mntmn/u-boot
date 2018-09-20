@@ -1,12 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 # Enable all the config-independent tools
 ifneq ($(HOST_TOOLS_ALL),)
+CONFIG_KIRKWOOD = y
 CONFIG_LCD_LOGO = y
 CONFIG_CMD_LOADS = y
 CONFIG_CMD_NET = y
@@ -103,6 +102,7 @@ dumpimage-mkimage-objs := aisimage.o \
 			pblimage.o \
 			pbl_crc32.o \
 			vybridimage.o \
+			stm32image.o \
 			$(ROCKCHIP_OBS) \
 			socfpgaimage.o \
 			lib/sha1.o \
@@ -111,6 +111,7 @@ dumpimage-mkimage-objs := aisimage.o \
 			ublimage.o \
 			zynqimage.o \
 			zynqmpimage.o \
+			zynqmpbif.o \
 			$(LIBFDT_OBJS) \
 			gpimage.o \
 			gpimage-common.o \
@@ -132,6 +133,7 @@ ifdef CONFIG_FIT_SIGNATURE
 # This affects include/image.h, but including the board config file
 # is tricky, so manually define this options here.
 HOST_EXTRACFLAGS	+= -DCONFIG_FIT_SIGNATURE
+HOST_EXTRACFLAGS	+= -DCONFIG_FIT_SIGNATURE_MAX_SIZE=$(CONFIG_FIT_SIGNATURE_MAX_SIZE)
 endif
 
 ifdef CONFIG_SYS_U_BOOT_OFFS
@@ -244,7 +246,7 @@ endif # !LOGO_BMP
 #
 HOST_EXTRACFLAGS += -include $(srctree)/include/compiler.h \
 		$(patsubst -I%,-idirafter%, $(filter -I%, $(UBOOTINCLUDE))) \
-		-I$(srctree)/lib/libfdt \
+		-I$(srctree)/scripts/dtc/libfdt \
 		-I$(srctree)/tools \
 		-DUSE_HOSTCC \
 		-D__KERNEL_STRICT_NAMES \

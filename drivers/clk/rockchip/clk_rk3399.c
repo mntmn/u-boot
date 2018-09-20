@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2015 Google, Inc
  * (C) 2017 Theobroma Systems Design und Consulting GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -19,8 +18,6 @@
 #include <asm/arch/hardware.h>
 #include <dm/lists.h>
 #include <dt-bindings/clock/rk3399-cru.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
 struct rk3399_clk_plat {
@@ -997,6 +994,16 @@ static int rk3399_clk_enable(struct clk *clk)
 	case HCLK_HOST1:
 	case HCLK_HOST1_ARB:
 		return 0;
+
+	case SCLK_MAC:
+	case SCLK_MAC_RX:
+	case SCLK_MAC_TX:
+	case SCLK_MACREF:
+	case SCLK_MACREF_OUT:
+	case ACLK_GMAC:
+	case PCLK_GMAC:
+		/* Required to successfully probe the Designware GMAC driver */
+		return 0;
 	}
 
 	debug("%s: unsupported clk %ld\n", __func__, clk->id);
@@ -1236,6 +1243,8 @@ static ulong rk3399_pmuclk_get_rate(struct clk *clk)
 	ulong rate = 0;
 
 	switch (clk->id) {
+	case PLL_PPLL:
+		return PPLL_HZ;
 	case PCLK_RKPWM_PMU:
 		rate = rk3399_pwm_get_clk(priv->pmucru);
 		break;
@@ -1257,6 +1266,13 @@ static ulong rk3399_pmuclk_set_rate(struct clk *clk, ulong rate)
 	ulong ret = 0;
 
 	switch (clk->id) {
+	case PLL_PPLL:
+		/*
+		 * This has already been set up and we don't want/need
+		 * to change it here.  Accept the request though, as the
+		 * device-tree has this in an 'assigned-clocks' list.
+		 */
+		return PPLL_HZ;
 	case SCLK_I2C0_PMU:
 	case SCLK_I2C4_PMU:
 	case SCLK_I2C8_PMU:
