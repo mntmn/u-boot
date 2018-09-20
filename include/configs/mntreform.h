@@ -108,11 +108,11 @@
   "fdt_addr=0x18000000\0" \
 	"fdt_high=0xffffffff\0" \
 	"fdt_file=imx6qp-mntreform.dtb\0" \
-  "preboot=setenv stdout serial,vga;usb start;\0" \
-  "bootargs=noinitrd root=/dev/mmcblk0p1 rootwait rw pci=nomsi cma=256M video=HDMI-A-1:1280x720-24\0" \
+  "preboot=setenv stdout serial,vga\0" \
+  "bootargs=noinitrd root=/dev/mmcblk0p1 rootwait rw pci=nomsi cma=256M no_console_suspend=1\0" \
   "linux=ext4load mmc 0:1 ${loadaddr} zImage; ext4load mmc 0:1 ${fdt_addr} ${fdt_file}; fdt addr ${fdt_addr}; fdt resize; bootz ${loadaddr} - ${fdt_addr}\0" \
 	"bootcmd=" \
-    "echo; echo Welcome to Reform. Type  run linux  to start Debian/GNU Linux or  help  for other commands." \
+    "setenv stdout serial,vga; echo; echo Welcome to Reform.;run linux" \
     "\0" 
 
 /* Miscellaneous configurable options */
