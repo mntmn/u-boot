@@ -74,9 +74,10 @@
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (6 * 1024 * 1024)
 #define CONFIG_BMP_16BPP
 #define CONFIG_IMX_HDMI
-
-#define CONFIG_PREBOOT                 "setenv stdout serial,vga\0"
 */
+
+#define CONFIG_PREBOOT                 "setenv stdout serial,vga;usb start;setenv stdin usbkbd,serial\0"
+
 #define CONFIG_IMX_VIDEO_SKIP
 #define CONFIG_IMX_HDMI
 
@@ -92,23 +93,17 @@
 #define CONFIG_DRIVE_MMC
 #endif
 
-#ifdef CONFIG_USB_STORAGE
-#define CONFIG_DRIVE_USB "usb "
-#else
-#define CONFIG_DRIVE_USB
-#endif
-
 #define CONFIG_DRIVE_TYPES CONFIG_DRIVE_SATA CONFIG_DRIVE_MMC CONFIG_DRIVE_USB
-#define CONFIG_UMSDEVS CONFIG_DRIVE_SATA CONFIG_DRIVE_MMC
+/*#define CONFIG_UMSDEVS CONFIG_DRIVE_SATA CONFIG_DRIVE_MMC*/
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"usb_pgood_delay=2000\0" \
+	"usb_pgood_delay=0\0" \
 	"console=ttymxc0\0" \
   "loadaddr=0x10008000\0" \
   "fdt_addr=0x18000000\0" \
 	"fdt_high=0xffffffff\0" \
 	"fdt_file=imx6qp-mntreform.dtb\0" \
-  "preboot=setenv stdout serial,vga\0" \
+  "preboot=setenv stdout serial,vga;usb start;setenv stdin usbkbd,serial\0" \
   "bootargs=noinitrd root=/dev/mmcblk0p1 rootwait rw pci=nomsi cma=256M no_console_suspend=1\0" \
   "linux=ext4load mmc 0:1 ${loadaddr} zImage; ext4load mmc 0:1 ${fdt_addr} ${fdt_file}; fdt addr ${fdt_addr}; fdt resize; bootz ${loadaddr} - ${fdt_addr}\0" \
 	"bootcmd=" \
@@ -121,7 +116,7 @@
 #define CONFIG_SYS_MEMTEST_SCRATCH     0x10800000
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS	       1
+/*#define CONFIG_NR_DRAM_BANKS	       1*/
 #define PHYS_SDRAM		       MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE	       PHYS_SDRAM

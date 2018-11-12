@@ -35,7 +35,6 @@
 #include <usb/ehci-ci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-#define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 
 #define UART_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
 	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |			\
@@ -204,11 +203,12 @@ static iomux_v3_cfg_t const enet_pads2[] = {
 };
 
 static iomux_v3_cfg_t const misc_pads[] = {
-	MX6_PAD_GPIO_1__USB_OTG_ID		| MUX_PAD_CTRL(WEAK_PULLUP),
-	MX6_PAD_KEY_COL4__USB_OTG_OC		| MUX_PAD_CTRL(WEAK_PULLUP),
+	MX6_PAD_GPIO_1__USB_OTG_ID		| MUX_PAD_CTRL(WEAK_PULLDOWN),
+	MX6_PAD_KEY_COL4__USB_OTG_OC	| MUX_PAD_CTRL(WEAK_PULLUP),
 	MX6_PAD_EIM_D30__USB_H1_OC		| MUX_PAD_CTRL(WEAK_PULLUP),
+  MX6_PAD_ENET_RX_ER__USB_OTG_ID 		    | MUX_PAD_CTRL(WEAK_PULLDOWN)
 	/* OTG Power enable */
-	MX6_PAD_EIM_D22__GPIO3_IO22		| MUX_PAD_CTRL(OUTPUT_40OHM),
+	//MX6_PAD_EIM_D22__GPIO3_IO22		| MUX_PAD_CTRL(OUTPUT_40OHM),
 };
 
 #define GPIO_ENET_INT_1         IMX_GPIO_NR(1, 28)
@@ -255,7 +255,7 @@ static void setup_iomux_uart(void)
 #define USB_OTHERREGS_OFFSET 0x800
 #define UCTRL_PWR_POL    (1 << 9)
 
-int board_ehci_hcd_init(int port)
+/*int board_ehci_hcd_init(int port)
 {
   u32 *usbnc_usb_ctrl;
 
@@ -287,7 +287,7 @@ int board_ehci_power(int port, int on)
   }
 
 	return 0;
-}
+  }*/
 
 #endif
 
@@ -571,29 +571,45 @@ int board_early_init_f(void)
 	return 0;
 }
 
-static iomux_v3_cfg_t const usb_hc1_pads[] = {
-    MX6_PAD_GPIO_4__GPIO1_IO04 | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
 static void setup_usb(void)
 {
+    u32 *usbnc_usb_ctrl;
+    
     /*
      * set daisy chain for otg_pin_id on 6q.
      * for 6dl, this bit is reserved
      */
     imx_iomux_set_gpr_register(1, 13, 1, 1);
-    SETUP_IOMUX_PADS(usb_hc1_pads);
+    SETUP_IOMUX_PADS(misc_pads);
+
+    usbnc_usb_ctrl = (u32 *)(USB_BASE_ADDR + USB_OTHERREGS_OFFSET +
+                             0 * 4);
+    setbits_le32(usbnc_usb_ctrl, UCTRL_PWR_POL);
+    usbnc_usb_ctrl = (u32 *)(USB_BASE_ADDR + USB_OTHERREGS_OFFSET +
+                             1 * 4);
+    setbits_le32(usbnc_usb_ctrl, UCTRL_PWR_POL);
+
+    
+
+    /* USBPHY_TX = 0x10
+       the value is from 0x0 to 0xf
+    */
+
+    
 }
 
 int board_init(void)
 {
 	struct iomuxc *const iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
+  u32 *resetmux_ctrl = 0x020e0088;
+
+  *resetmux_ctrl = 0x5; // set IOMUXC_SW_MUX_CTL_PAD_EIM_ADDR25 to GPIO5_IO02, disabling RSTOUT
 
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
   
 	setup_usb();
-	setup_spi();
+	//setup_spi();
   
 	imx_iomux_v3_setup_multiple_pads(
 		usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
