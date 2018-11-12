@@ -1,0 +1,12 @@
+usb_pgood_delay=0
+console=ttymxc0
+loadaddr=0x10008000
+fdt_addr=0x18000000
+fdt_high=0xffffffff
+fdt_file=imx6qp-mntreform.dtb
+logo=ext4load mmc 0:1 ${loadaddr} mnt-blk-icon.bmp; bmp display ${loadaddr} 1238 64
+preboot=setenv stdout serial,vga;run logo;usb start;setenv stdin usbkbd,serial;echo Welcome to MNT Reform.
+bootargs=noinitrd root=/dev/mmcblk0p1 rootwait rw pci=nomsi cma=256M no_console_suspend=1
+linux=ext4load mmc 0:1 ${loadaddr} zImage; ext4load mmc 0:1 ${fdt_addr} ${fdt_file}; fdt addr ${fdt_addr}; fdt resize; bootz ${loadaddr} - ${fdt_addr}
+bootcmd=run linux
+
